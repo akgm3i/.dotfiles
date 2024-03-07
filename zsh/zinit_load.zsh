@@ -16,7 +16,7 @@ zinit light x-motemen/ghq
 
 # a lightweight and flexible command-line JSON processor.
 zinit ice as'program' from'gh-r' pick'jq* -> jq'
-zinit light stedolan/jq
+zinit light jqlang/jq
 
 # # A command-line tool that makes git easier to use with GitHub.
 # zinit ice from'gh-r' sbin'**/hub' cp'**/hub.zsh_completion -> _hub' atload'eval "$(hub alias -s)"'
