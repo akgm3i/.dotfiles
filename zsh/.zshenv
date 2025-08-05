@@ -6,6 +6,8 @@
 export XDG_CONFIG_HOME=${HOME}/.config
 export XDG_CACHE_HOME=${HOME}/.cache
 export XDG_DATA_HOME=${HOME}/.local/share
+export XDG_STATE_HOME=${HOME}/.local/state
+export XDG_RUNTIME_DIR=${HOME}/.temp
 
 # DOTPATH
 export DOTPATH=${HOME}/.dotfiles
@@ -21,7 +23,7 @@ export ZINIT
 
 # tmux
 export TMUX_HOME=${DOTPATH}/tmux
-export TMUX_TMPDIR=$XDG_RUNTIME_DIR
+export TMUX_TMPDIR=${XDG_RUNTIME_DIR}
 
 # LANGUAGE
 export LANGUAGE='en_US.UTF-8'
@@ -60,22 +62,21 @@ export CORRECT_IGNORE='_*'
 export CORRECT_IGNORE_FILE='.*'
 
 export WORDCHARS='*?_-.[]~=&;!#$%^(){}<>'
-export WORDCHARS='*?.[]~&;!#$%^(){}<>'
 
 # fzf - command-line fuzzy finder (https://github.com/junegunn/fzf)
 export FZF_DEFAULT_OPTS="--extended --ansi --multi"
 
 # History
 # History file
-export HISTFILE=$ZDOTDIR/zsh_history
+export HISTFILE=${XDG_STATE_HOME}/zsh/history
 # History size in memory
 export HISTSIZE=10000
 # The number of histsize
 export SAVEHIST=1000000
 # The size of asking history
 export LISTMAX=50
-# Do not add in root
-if [[ $UID == 0 ]]; then
+# Do not save history when running as root
+if [[ ${UID} -eq 0 ]]; then
     unset HISTFILE
     export SAVEHIST=0
 fi
@@ -84,25 +85,25 @@ fi
 export INTERACTIVE_FILTER="fzf:peco:percol:gof:pick"
 
 # ghq
-export GHQ_ROOT=$HOME/Projects
+export GHQ_ROOT=${HOME}/Projects
 
 # Programing Languages
 # asdf
 export ASDF_CONFIG_FILE=${XDG_CONFIG_HOME}/asdf/asdfrc
 export ASDF_DATA_DIR=${XDG_DATA_HOME}/asdf
 
-# Settings for golang
-export GOPATH=$HOME/go
-export GOBIN=$GOPATH/bin
+# Settings for Go
+export GOPATH=${XDG_DATA_HOME}/go
+export GOBIN=${GOPATH}/bin
 
 # PATH
 setopt no_global_rcs
 typeset -gx -U path
 path=( \
-    ~/bin(N-/) \
-    ~/.local/bin \
-    $GOBIN \
-    $DOTPATH/bin(N-/) \
+    ${HOME}/bin(N-/) \
+    ${HOME}/.local/bin \
+    ${GOBIN} \
+    ${DOTPATH}/bin(N-/) \
     /usr/local/bin(N-/) \
-    $path \
+    ${path} \
     )
