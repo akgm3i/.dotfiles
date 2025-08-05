@@ -131,10 +131,85 @@ uninstall_sheldon() {
     fi
 }
 
+uninstall_mise() {
+    log_info "Checking for mise installation..."
+    local mise_path="$HOME/.local/bin/mise"
+
+    # Check for the existence of the mise binary as the primary indicator of installation.
+    if [ ! -f "$mise_path" ]; then
+        log_info "mise binary not found at $mise_path. Skipping uninstallation."
+        return
+    fi
+
+    if [ "${CI-}" = "true" ] || prompt_yes_no "Do you want to uninstall mise?"; then
+        # Attempt to use the official uninstaller first if the command is available.
+        if command -v mise &> /dev/null; then
+            log_info "Uninstalling mise using 'mise implode'..."
+            if mise implode; then
+                log_info "mise uninstalled successfully via 'mise implode'."
+                # implode should remove the binary, but we double-check and remove if it's still there.
+                if [ -f "$mise_path" ]; then
+                    rm "$mise_path"
+                fi
+                log_info "mise uninstallation complete."
+                return
+            else
+                log_error "'mise implode' command failed. Proceeding with manual removal."
+            fi
+        else
+            log_info "'mise' command not found in PATH. Proceeding with manual removal."
+        fi
+
+        # Fallback to manual removal.
+        log_info "Attempting to manually remove mise files..."
+
+        # Remove the binary
+        log_info "Removing mise binary: $mise_path"
+        rm "$mise_path"
+
+        # Remove directories
+        local mise_data_dir=${MISE_DATA_DIR:-"$XDG_DATA_HOME/mise"}
+        local mise_state_dir=${MISE_STATE_DIR:-"$HOME/.local/state/mise"}
+        local mise_config_dir=${MISE_CONFIG_DIR:-"$XDG_CONFIG_HOME/mise"}
+        local mise_cache_dir
+
+        case "$(uname -s)" in
+            Linux*)
+                mise_cache_dir=${MISE_CACHE_DIR:-"$HOME/.cache/mise"}
+                ;;
+            Darwin*)
+                mise_cache_dir=${MISE_CACHE_DIR:-"$HOME/Library/Caches/mise"}
+                ;;
+            *)
+                mise_cache_dir=""
+                ;;
+        esac
+
+        local dirs_to_remove=("$mise_data_dir" "$mise_state_dir" "$mise_config_dir")
+        if [ -n "$mise_cache_dir" ]; then
+            dirs_to_remove+=("$mise_cache_dir")
+        fi
+
+        for dir in "${dirs_to_remove[@]}"; do
+            if [ -d "$dir" ]; then
+                log_info "Removing directory: $dir"
+                rm -rf "$dir"
+            else
+                log_info "Directory not found, skipping: $dir"
+            fi
+        done
+
+        log_info "mise manual uninstallation process completed."
+    else
+        log_info "Skipping mise uninstallation."
+    fi
+}
+
 main() {
     remove_symlinks
     restore_backup
     uninstall_sheldon
+    uninstall_mise
 
     log_info "✅ Uninstallation completed successfully!"
 }
