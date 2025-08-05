@@ -7,7 +7,7 @@ set -euo pipefail
 DOTPATH=${DOTPATH:-"$HOME/.dotfiles"}
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}
 XDG_DATA_HOME=${XDG_DATA_HOME:-"$HOME/.local/share"}
-DOTFILES_REPO=${DOTFILES_REPO:-"https://github.com/akgm3i/dotfiles.git"}
+DOTFILES_REPO=${DOTFILES_REPO:-"https://github.com/akgm3i/.dotfiles.git"}
 
 # --- Globals ---
 backup_dir=""
