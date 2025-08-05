@@ -1,0 +1,242 @@
+#
+# This script displays a motd.
+# It's intended to be sourced from other zsh scripts.
+#
+
+()
+{
+    # --- Definitions ---
+    local lspider_body sspider_body
+    lspider_body=$(cat << 'EOF'
+              ,     :
+            ,'      :     '.
+          ,;        :      ';,
+        ,:'         :        ':.
+        ::          :         ;:
+       ,:       ,,,,,,,,,      ::
+       ::     .:::::::::::.    ::
+    ,  ::    :::::::::::::::   ::
+   ;   ::   :::::::▄▄▄:::::::  ':   .
+  ;    ::   ::::::▐█:▀█::::::   :;   ;
+ :'    ::   ::::::▄█▀▀█::::::   :;    ;
+::     ':.  ::::::▐█:▪▐▌:::::  ,:     ::
+';.     ';;:;::::::▀::▀:::::;,;''    .:'
+ ::         ';:::::::::::::;'        ::
+  ::.         '::;:::::;::'          :;
+   ;:.   ,.,,;;';:::::::;';;,,,.    ,:'
+    ':::'''' ,,';:::::::;",, '':::::;'
+        ,,,,;' ,;:::::::;, ':,,
+     ,,;"'   .:: ':::::' ;:   ";;,,
+   .:'      .:;   ;""";  ':.     "';.
+   :;      :;:            ';,      ::
+   ;      :;.               ;:     ::
+   ::    :;                  ;:    ::
+    '.  ,;                    ;:  .'
+     '  ::                    ::  '
+       ,:;                    ::.
+       ::'                     :;
+       ::                      ::
+       ::                      ::
+        ;:                    :;
+         ';                  ;'
+           ;                ;
+EOF
+)
+    sspider_body=$(cat << 'EOF'
+  / _ \
+\_\(A)/_/
+ _//o\\\\_
+  /   \
+EOF
+)
+
+    # --- Get System Info ---
+    local mem_info disk_info pkg_info zsh_plugins_info
+    if (( $+functions[is_linux] )) && is_linux; then
+        if (( $+commands[free] )); then
+            mem_info=$(free -h | awk 'NR==2{printf "%s/%s", $3, $2}')
+        fi
+        if (( $+commands[df] )); then
+            disk_info=$(df -h / | awk 'NR==2{printf "%s/%s (%s)", $3, $2, $5}')
+        fi
+        if [[ -x /usr/lib/update-notifier/apt-check ]]; then
+            local updates
+            updates=$(/usr/lib/update-notifier/apt-check 2>&1)
+            local num_updates=$(echo "$updates" | cut -d';' -f1)
+            local num_security=$(echo "$updates" | cut -d';' -f2)
+            if (( num_updates > 0 || num_security > 0 )); then
+                pkg_info="${fg_bold[yellow]}${num_updates} updates, ${num_security} security updates${reset_color}"
+            fi
+        fi
+    elif (( $+functions[is_osx] )) && is_osx; then
+        if (( $+commands[top] )); then
+            mem_info=$(top -l 1 | grep "PhysMem:" | awk '{print $2 " used, " $6 " unused"}')
+        fi
+        if (( $+commands[df] )); then
+            disk_info=$(df -h / | awk 'NR==2{printf "%s/%s (%s)", $3, $2, $5}')
+        fi
+        if (( $+commands[brew] )); then
+            local num_outdated
+            num_outdated=$(brew outdated | wc -l | tr -d ' ')
+            if (( num_outdated > 0 )); then
+                pkg_info="${fg_bold[yellow]}${num_outdated} packages can be updated${reset_color}"
+            fi
+        fi
+    fi
+
+    # Get Zsh plugins info
+    local sheldon_config="$ZDOTDIR/sheldon/plugins.toml"
+    if [[ -f "$sheldon_config" ]]; then
+        local num_plugins
+        num_plugins=$(grep -c '\[plugins\.' "$sheldon_config")
+        if (( num_plugins > 0 )); then
+            zsh_plugins_info="${num_plugins} plugins managed by sheldon"
+        fi
+    fi
+
+    # --- Prepare MOTD data ---
+    local -a labels values
+    labels=(
+        "User"
+        "Host"
+        "This is ZSH"
+        "DISPLAY on"
+        "System"
+        "Uptime"
+    )
+    values=(
+        "$(whoami)"
+        "$(hostname)"
+        "$ZSH_VERSION"
+        "$DISPLAY"
+        "$(uname -srm)"
+        "$(uptime -p)"
+    )
+
+    if [[ -n "$mem_info" ]]; then
+        labels+=("Memory")
+        values+=("$mem_info")
+    fi
+    if [[ -n "$disk_info" ]]; then
+        labels+=("Disk (/)")
+        values+=("$disk_info")
+    fi
+
+    # Get Git status for dotfiles
+    if (( $+functions[is_git_repo] )) && (cd "$ZDOTDIR" && is_git_repo); then
+        local git_status
+        if [[ -n "$(git -C "$ZDOTDIR" status --porcelain)" ]]; then
+            git_status="${fg_bold[red]}Uncommitted changes${reset_color}"
+        else
+            git_status="${fg_bold[green]}Clean${reset_color}"
+        fi
+        labels+=("Dotfiles")
+        values+=("$git_status")
+    fi
+
+    if [[ -n "$pkg_info" ]]; then
+        labels+=("Packages")
+        values+=("$pkg_info")
+    fi
+    if [[ -n "$zsh_plugins_info" ]]; then
+        labels+=("Zsh Plugins")
+        values+=("$zsh_plugins_info")
+    fi
+
+    # --- Format MOTD ---
+    local -a motd
+    local max_label_width=0
+    local label
+    for label in "${labels[@]}"; do
+        (( ${#label} > max_label_width )) && max_label_width=${#label}
+    done
+
+    local i
+    for ((i = 1; i <= ${#labels}; i++)); do
+        motd+=("$(printf "${fg_bold[cyan]}%-${max_label_width}s: ${fg_bold[red]}%s${reset_color}" "${labels[$i]}" "${values[$i]}")")
+    done
+
+    # --- Helper Functions ---
+
+    # Get the visible width of a string (stripping ANSI codes).
+    _get_string_width() {
+        local rendered_line
+        rendered_line=$(print -nrP -- "$1")
+        echo ${#rendered_line}
+    }
+
+    # Get the maximum width from a multi-line string.
+    _get_max_width() {
+        # Return 0 if input is empty.
+        if [[ -z "$1" ]]; then
+            echo 0
+            return
+        fi
+
+        local max_width=0 line width
+        # Use a while-read loop for robustness instead of parameter expansion.
+        while IFS= read -r line; do
+            width=$(_get_string_width "$line")
+            (( width > max_width )) && max_width=$width
+        done <<< "$1"
+        echo $max_width
+    }
+
+    # --- Main Logic ---
+
+    # Select the appropriate spider based on terminal height.
+    local spider_art spider_thread_art
+    local lspider_height=${#${(f)lspider_body}}
+    local sspider_height=${#${(f)sspider_body}}
+    local prompt_margin=3
+
+    if (( LINES > lspider_height + prompt_margin )); then
+        spider_art=$lspider_body
+        spider_thread_art='                    :'
+    elif (( LINES > sspider_height + prompt_margin )); then
+        spider_art=$sspider_body
+        spider_thread_art='    |'
+    else
+        # Not enough space for any art.
+        return
+    fi
+
+    # --- Calculate Dimensions ---
+    local display_height=$((LINES - prompt_margin))
+    local art_margin=2
+    local art_width=$(( $(_get_max_width "$spider_art") + art_margin * 2 ))
+    local message_margin=4
+    local message_width=$((COLUMNS - art_width - message_margin * 2))
+
+    # --- Prepare Content ---
+    local art_lines=("${(@f)spider_art}")
+    local art_height=${#art_lines}
+    local thread_height=$((display_height - art_height))
+    local message_padding_top=$(( (display_height - ${#motd}) / 2 ))
+
+    # --- Draw Content ---
+    local i=1
+    local art_pane message_pane
+    for ((i = 1; i <= display_height; i++)); do
+        # Art Pane
+        art_pane=""
+        if (( i > thread_height )); then
+            local art_line_index=$((i - thread_height))
+            if (( art_line_index <= art_height )); then
+                 art_pane="$(printf "%*s" $art_margin "")${art_lines[art_line_index]}"
+            fi
+        else
+            art_pane="$(printf "%*s" $art_margin "")${spider_thread_art}"
+        fi
+        art_pane="$(printf "%-${art_width}s" "$art_pane")"
+
+        # Message Pane
+        message_pane=""
+        local message_line_index=$((i - message_padding_top))
+        if (( message_line_index > 0 && message_line_index <= ${#motd} )); then
+            message_pane="$(printf "%*s" $message_margin "")${motd[message_line_index]}"
+        fi
+
+        print -Pr -- "${art_pane}${message_pane}"
+    done
+}

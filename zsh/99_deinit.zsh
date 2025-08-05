@@ -2,6 +2,7 @@
 # deinitialize.
 #
 
+# Source any secret files.
 ()
 {
     local f
@@ -11,100 +12,9 @@
     done
 }
 
-lspider=$(cat << EOF
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-                    :
-              ,     :
-            ,'      :     '.
-          ,;        :      ';,
-        ,:'         :        ':.
-        ::          :         ;:
-       ,:       ,,,,,,,,,      ::
-       ::     .:::::::::::.    ::
-    ,  ::    :::::::::::::::   ::
-   ;   ::   :::::::▄▄▄:::::::  ':   .
-  ;    ::   ::::::▐█:▀█::::::   :;   ;
- :'    ::   ::::::▄█▀▀█::::::   :;    ;
-::     ':.  ::::::▐█:▪▐▌:::::  ,:     ::
-';.     ';;:;::::::▀::▀:::::;,;''    .:'
- ::         ';:::::::::::::;'        ::
-  ::.         '::;:::::;::'          :;
-   ;:.   ,.,,;;';:::::::;';;,,,.    ,:'
-    ':::'''' ,,';:::::::;",, '':::::;'
-        ,,,,;' ,;:::::::;, ':,,
-     ,,;"'   .:: ':::::' ;:   ";;,,
-   .:'      .:;   ;""";  ':.     "';.
-   :;      :;:            ';,      ::
-   ;      :;.               ;:     ::
-   ::    :;                  ;:    ::
-    '.  ,;                    ;:  .'
-     '  ::                    ::  '
-       ,:;                    ::.
-       ::'                     :;
-       ::                      ::
-       ::                      ::
-        ;:                    :;
-         ';                  ;'
-           ;                ;
-EOF
-)
-
-sspider=$(cat << 'EOF'
-    |
-    |
-    |
-    |
-    |
-    |
-    |
-    |
-  / _ \
-\_\(_)/_/
- _//o\\_
-  /   \
-EOF
-)
-
-if [ $LINES -gt 18 ]; then
-  printf $lspider
-else
-  printf $sspider
+#
+# Display a spider ASCII art on exit, if the terminal is large enough.
+#
+if [[ -o interactive ]]; then
+    source "${0:A:h}/motd.zsh"
 fi
-
-printf "\n\n"
-
-cat << EOF
-            $fg_bold[cyan]This is ZSH $fg_bold[red]$ZSH_VERSION
-            $fg_bold[cyan]DISPLAY on $fg_bold[red]$DISPLAY$reset_color
-EOF
