@@ -92,6 +92,7 @@ create_symlinks() {
         "$DOTPATH/tmux:$XDG_CONFIG_HOME/tmux"
         "$DOTPATH/sheldon:$XDG_CONFIG_HOME/sheldon"
         "$DOTPATH/zsh:$XDG_CONFIG_HOME/zsh"
+        "$DOTPATH/mise:$XDG_CONFIG_HOME/mise"
         "$DOTPATH/iterm2:$XDG_CONFIG_HOME/iterm2"
         "$DOTPATH/npm:$XDG_CONFIG_HOME/npm"
         "$DOTPATH/zsh/.zshenv:$HOME/.zshenv"
