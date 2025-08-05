@@ -32,17 +32,6 @@ github = 'zsh-users/zsh-completions'
 
 
 # plugins
-# [plugins.asdf]
-# github = 'asdf-vm/asdf'
-# use = ['asdf.sh']
-
-# [plugins.ghq]
-# github = 'x-motemen/ghq'
-# use = ['ghq']
-
-# [plugins.jq]
-# github = 'jqlang/jq'
-# use = ['jq']
 
 # Deferred plugins
 # ----------------
