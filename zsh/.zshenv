@@ -13,14 +13,6 @@ export XDG_RUNTIME_DIR=${HOME}/.temp
 export DOTPATH=${HOME}/.dotfiles
 export ZDOTDIR=${XDG_CONFIG_HOME}/zsh
 
-# sheldon
-
-# zinit
-declare -A ZINIT
-ZINIT[HOME_DIR]=${XDG_DATA_HOME}/zinit
-ZINIT[BIN_DIR]=${ZINIT[HOME_DIR]}/bin
-export ZINIT
-
 # tmux
 export TMUX_HOME=${DOTPATH}/tmux
 export TMUX_TMPDIR=${XDG_RUNTIME_DIR}
@@ -88,10 +80,6 @@ export INTERACTIVE_FILTER="fzf:peco:percol:gof:pick"
 export GHQ_ROOT=${HOME}/Projects
 
 # Programing Languages
-# asdf
-export ASDF_CONFIG_FILE=${XDG_CONFIG_HOME}/asdf/asdfrc
-export ASDF_DATA_DIR=${XDG_DATA_HOME}/asdf
-
 # Settings for Go
 export GOPATH=${XDG_DATA_HOME}/go
 export GOBIN=${GOPATH}/bin
