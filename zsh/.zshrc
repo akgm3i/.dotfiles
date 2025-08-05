@@ -8,9 +8,6 @@ umask 022
 # no dump core file
 limit coredumpsize 0
 
-# default key bind
-bindkey -d
-
 # Return if zsh is called from Vim
 if [[ -n $VIMRUNTIME ]]; then
     return 0
