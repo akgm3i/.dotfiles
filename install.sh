@@ -6,6 +6,7 @@ set -euo pipefail
 # --- Configuration ---
 DOTPATH=${DOTPATH:-"$HOME/.dotfiles"}
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}
+XDG_DATA_HOME=${XDG_DATA_HOME:-"$HOME/.local/share"}
 DOTFILES_REPO=${DOTFILES_REPO:-"https://github.com/akgm3i/dotfiles.git"}
 
 # --- Globals ---
@@ -95,17 +96,24 @@ create_symlinks() {
         "$DOTPATH/zsh/.zshenv:$HOME/.zshenv"
     )
 
-    backup_dir="$HOME/.dotfiles_backup_$(date +%Y%m%d%H%M%S)"
-    mkdir -p "$backup_dir"
-    log_info "Created backup directory: $backup_dir"
-
     for link in "${symlinks[@]}"; do
         local src="${link%%:*}"
         local dest="${link#*:}"
 
         if [ -e "$dest" ] || [ -L "$dest" ]; then
+            if [ -z "$backup_dir" ]; then
+                backup_dir="$XDG_DATA_HOME/dotfiles/backup_$(date +%Y%m%d%H%M%S)"
+                mkdir -p "$backup_dir"
+                log_info "Created backup directory: $backup_dir"
+            fi
             log_info "Backing up existing file: $dest"
-            mv "$dest" "$backup_dir/"
+            # Preserve directory structure in backup
+            local backup_path="$backup_dir/$(dirname "${dest#$HOME/}")"
+            mkdir -p "$backup_path"
+            if ! mv "$dest" "$backup_path/"; then
+                log_error "Failed to back up $dest. Aborting."
+                exit 1
+            fi
         fi
 
         if [ ! -e "$src" ]; then
@@ -126,4 +134,4 @@ main() {
     log_info "Please restart your shell to apply the changes."
 }
 
-main "$@"
+main

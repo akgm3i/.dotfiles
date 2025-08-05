@@ -5,6 +5,7 @@ set -euo pipefail
 
 # --- Configuration ---
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}
+XDG_DATA_HOME=${XDG_DATA_HOME:-"$HOME/.local/share"}
 
 # --- Helper for logging ---
 log_info() {
@@ -41,8 +42,13 @@ remove_symlinks() {
 
 restore_backup() {
     log_info "Searching for backups..."
-    local backup_dirs=("$HOME"/.dotfiles_backup_*/)
+    local backup_parent_dir="$XDG_DATA_HOME/dotfiles"
+    if [ ! -d "$backup_parent_dir" ]; then
+        log_info "No backup directories found."
+        return
+    fi
 
+    local backup_dirs=("$backup_parent_dir"/backup_*/)
     if [ ${#backup_dirs[@]} -eq 0 ] || [ ! -d "${backup_dirs}" ]; then
         log_info "No backup directories found."
         return
@@ -51,7 +57,7 @@ restore_backup() {
     local backup_to_restore
     if [ "${CI-}" = "true" ]; then
         # In CI, automatically select the latest backup
-        backup_to_restore=$(ls -td -- "$HOME"/.dotfiles_backup_*/ | head -n 1)
+        backup_to_restore=$(ls -td -- "$backup_parent_dir"/backup_*/ | head -n 1)
     else
         # In interactive mode, let the user choose
         log_info "Available backups:"
@@ -75,23 +81,61 @@ restore_backup() {
         local cp_opts="-r"
         [ "${CI-}" != "true" ] && cp_opts="-ri"
 
-        # shellcheck disable=SC2086
-        cp $cp_opts "$backup_to_restore"/* "$HOME/"
-        # Restore to .config as well
-        if [ -d "$backup_to_restore/config" ]; then
-             # shellcheck disable=SC2086
-            cp $cp_opts "$backup_to_restore/config"/* "$XDG_CONFIG_HOME/"
+        # As we preserved the structure, we can copy the whole backup content to HOME
+        # The backup contains subdirectories like .config, etc.
+        if [ -d "$backup_to_restore" ]; then
+            # shellcheck disable=SC2086
+            cp $cp_opts "$backup_to_restore"/. "$HOME/"
+            log_info "Restoration from backup completed."
+        else
+            log_error "Backup directory not found: $backup_to_restore"
         fi
-        log_info "Restoration from backup completed."
-        log_info "You may need to move some files manually from $backup_to_restore"
+    fi
+}
+
+prompt_yes_no() {
+    while true; do
+        read -r -p "$1 [y/N]: " answer
+        case "$answer" in
+            [Yy]*) return 0 ;;
+            [Nn]*|"" ) return 1 ;;
+            *) log_error "Invalid input." ;;
+        esac
+    done
+}
+
+uninstall_sheldon() {
+    log_info "Checking for sheldon installation..."
+    local sheldon_path="$HOME/.local/bin/sheldon"
+    if [ -f "$sheldon_path" ]; then
+        # In CI, uninstall without prompting.
+        if [ "${CI-}" = "true" ] || prompt_yes_no "Do you want to uninstall sheldon?"; then
+            log_info "Uninstalling sheldon..."
+            rm "$sheldon_path"
+            # Attempt to remove the parent directory if it's empty
+            if [ -z "$(ls -A "$HOME/.local/bin")" ]; then
+                log_info "Removing empty directory: $HOME/.local/bin"
+                rmdir "$HOME/.local/bin"
+            fi
+            if [ -z "$(ls -A "$HOME/.local")" ]; then
+                log_info "Removing empty directory: $HOME/.local"
+                rmdir "$HOME/.local"
+            fi
+            log_info "sheldon uninstalled."
+        else
+            log_info "Skipping sheldon uninstallation."
+        fi
+    else
+        log_info "sheldon is not installed."
     fi
 }
 
 main() {
     remove_symlinks
     restore_backup
+    uninstall_sheldon
 
     log_info "✅ Uninstallation completed successfully!"
 }
 
-main "$@"
+main
