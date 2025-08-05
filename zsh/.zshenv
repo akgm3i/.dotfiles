@@ -96,6 +96,10 @@ export ASDF_DATA_DIR=${XDG_DATA_HOME}/asdf
 export GOPATH=${XDG_DATA_HOME}/go
 export GOBIN=${GOPATH}/bin
 
+# Settings for Node.js
+export NODE_REPL_HISTORY=${XDG_DATA_HOME}/node_repl_history
+export NPM_CONFIG_USERCONFIG=${XDG_CONFIG_HOME}/npm/npmrc
+
 # PATH
 setopt no_global_rcs
 typeset -gx -U path

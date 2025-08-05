@@ -93,6 +93,7 @@ create_symlinks() {
         "$DOTPATH/sheldon:$XDG_CONFIG_HOME/sheldon"
         "$DOTPATH/zsh:$XDG_CONFIG_HOME/zsh"
         "$DOTPATH/iterm2:$XDG_CONFIG_HOME/iterm2"
+        "$DOTPATH/npm:$XDG_CONFIG_HOME/npm"
         "$DOTPATH/zsh/.zshenv:$HOME/.zshenv"
     )
 
