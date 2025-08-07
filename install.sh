@@ -190,14 +190,8 @@ install_tools() {
 }
 
 switch_shell_to_zsh() {
-    if ! has "zsh"; then
-        log_error "zsh is not installed. Cannot switch shell."
-        return 1
-    fi
-
     local zsh_path
     zsh_path=$(command -v zsh)
-
 
     # Change default shell if it's not already zsh
     if [[ "$(basename "$SHELL")" != "zsh" ]]; then
