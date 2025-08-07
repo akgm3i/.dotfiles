@@ -13,9 +13,20 @@ export XDG_RUNTIME_DIR=${HOME}/.temp
 export DOTPATH=${HOME}/.dotfiles
 export ZDOTDIR=${XDG_CONFIG_HOME}/zsh
 
-# tmux
-export TMUX_HOME=${DOTPATH}/tmux
-export TMUX_TMPDIR=${XDG_RUNTIME_DIR}
+# History
+# History file
+export HISTFILE=${XDG_STATE_HOME}/zsh/history
+# History size in memory
+export HISTSIZE=10000
+# The number of histsize
+export SAVEHIST=1000000
+# The size of asking history
+export LISTMAX=50
+# Do not save history when running as root
+if [[ ${UID} -eq 0 ]]; then
+    unset HISTFILE
+    export SAVEHIST=0
+fi
 
 # LANGUAGE
 export LANGUAGE='en_US.UTF-8'
@@ -58,23 +69,12 @@ export WORDCHARS='*?_-.[]~=&;!#$%^(){}<>'
 # fzf - command-line fuzzy finder (https://github.com/junegunn/fzf)
 export FZF_DEFAULT_OPTS="--extended --ansi --multi"
 
-# History
-# History file
-export HISTFILE=${XDG_STATE_HOME}/zsh/history
-# History size in memory
-export HISTSIZE=10000
-# The number of histsize
-export SAVEHIST=1000000
-# The size of asking history
-export LISTMAX=50
-# Do not save history when running as root
-if [[ ${UID} -eq 0 ]]; then
-    unset HISTFILE
-    export SAVEHIST=0
-fi
-
 # available $INTERACTIVE_FILTER
 export INTERACTIVE_FILTER="fzf:peco:percol:gof:pick"
+
+# tmux
+export TMUX_HOME=${DOTPATH}/tmux
+export TMUX_TMPDIR=${XDG_RUNTIME_DIR}
 
 # ghq
 export GHQ_ROOT=${HOME}/Projects
@@ -97,7 +97,6 @@ typeset -gx -U path
 path=( \
     ${HOME}/bin(N-/) \
     ${HOME}/.local/bin \
-    ${GOBIN} \
     ${DOTPATH}/bin(N-/) \
     /usr/local/bin(N-/) \
     ${path} \
