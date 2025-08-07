@@ -18,7 +18,7 @@ fi
 
 # initialise completions with ZSH's compinit
 autoload -Uz compinit && compinit -d "${XDG_CACHE_HOME}/zsh/zcompdump-${ZSH_VERSION}"
-
+zstyle ':completion:*' cache-path $XDG_CACHE_HOME/zsh/zcompcache
 
 function cdrepo {
   local repodir="$( ghq list -p | fzf -1 +m )"

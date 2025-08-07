@@ -82,11 +82,14 @@ export GHQ_ROOT=${HOME}/Projects
 # Programing Languages
 # Settings for Go
 export GOPATH=${XDG_DATA_HOME}/go
-export GOBIN=${GOPATH}/bin
 
 # Settings for Node.js
 export NODE_REPL_HISTORY=${XDG_DATA_HOME}/node_repl_history
 export NPM_CONFIG_USERCONFIG=${XDG_CONFIG_HOME}/npm/npmrc
+
+# Settings for Rust
+export MISE_RUSTUP_HOME=${XDG_DATA_HOME}/rustup
+export MISE_CARGO_HOME=${XDG_DATA_HOME}/cargo
 
 # PATH
 setopt no_global_rcs
