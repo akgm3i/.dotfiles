@@ -14,9 +14,19 @@ if [[ -n ${VIMRUNTIME} ]]; then
 fi
 
 
-# tmux_automatically_attach attachs tmux session
-# automatically when your are in zsh
-# $DOTPATH/bin/tmuxx
+########
+# mise #
+########
+if [[ ! -f ${HOME}/.local/bin/mise ]]; then
+    # Install mise if not found
+    echo "mise not found. Installing..."
+    curl https://mise.run | sh
+    echo "mise installed."
+fi
+
+# activate mise
+eval "$(mise activate zsh)"
+
 
 ###########
 # sheldon #
@@ -31,18 +41,6 @@ fi
 
 # activate sheldon
 eval "$(sheldon source)"
-
-########
-# mise #
-########
-if [[ ! -f ${HOME}/.local/bin/mise ]]; then
-    # Install mise if not found
-    echo "mise not found. Installing..."
-    curl https://mise.run | sh
-    echo "mise installed."
-fi
-# activate mise
-eval "$(mise activate zsh)"
 
 
 # load local settings
