@@ -21,6 +21,8 @@ if [[ ! -f ${HOME}/.local/bin/mise ]]; then
     # Install mise if not found
     echo "mise not found. Installing..."
     curl https://mise.run | sh
+    mise trust ${MISE_GLOBAL_CONFIG_FILE}
+    mise install
     echo "mise installed."
 fi
 
