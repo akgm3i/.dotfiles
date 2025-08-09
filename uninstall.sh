@@ -27,6 +27,7 @@ remove_symlinks() {
         "$XDG_CONFIG_HOME/sheldon"
         "$XDG_CONFIG_HOME/zsh"
         "$XDG_CONFIG_HOME/mise"
+        "$XDG_CONFIG_HOME/npm"
         "$XDG_CONFIG_HOME/iterm2"
         "$HOME/.zshenv"
     )
