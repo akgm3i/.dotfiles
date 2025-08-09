@@ -53,55 +53,61 @@ EOF
     # Load zsh colors
     autoload -Uz colors && colors
 
-    # --- Get System Info ---
-    local mem_info disk_info pkg_info
-    if (( $+functions[is_linux] )) && is_linux; then
-        if (( $+commands[free] )); then
-            mem_info=$(free -h | awk 'NR==2{printf "%s/%s", $3, $2}')
+    # --- Helper Functions for System Info ---
+    _get_mem_info() {
+        if (( $+functions[is_linux] )) && is_linux && (( $+commands[free] )); then
+            free -h | awk 'NR==2{printf "%s/%s", $3, $2}'
+        elif (( $+functions[is_osx] )) && is_osx && (( $+commands[top] )); then
+            top -l 1 | grep "PhysMem:" | awk '{print $2 " used, " $6 " unused"}'
         fi
+    }
+
+    _get_disk_info() {
         if (( $+commands[df] )); then
-            disk_info=$(df -h / | awk 'NR==2{printf "%s/%s (%s)", $3, $2, $5}')
+            df -h / | awk 'NR==2{printf "%s/%s (%s)", $3, $2, $5}'
         fi
-        if [[ -x /usr/lib/update-notifier/apt-check ]]; then
+    }
+
+    _get_pkg_info() {
+        if (( $+functions[is_linux] )) && is_linux && [[ -x /usr/lib/update-notifier/apt-check ]]; then
             local updates
             updates=$(/usr/lib/update-notifier/apt-check 2>&1)
             local num_updates=$(echo "$updates" | cut -d';' -f1)
             local num_security=$(echo "$updates" | cut -d';' -f2)
             if (( num_updates > 0 || num_security > 0 )); then
-                pkg_info="${fg_bold[yellow]}${num_updates} updates, ${num_security} security updates${reset_color}"
+                echo "${fg_bold[yellow]}${num_updates} updates, ${num_security} security updates${reset_color}"
             fi
-        fi
-    elif (( $+functions[is_osx] )) && is_osx; then
-        if (( $+commands[top] )); then
-            mem_info=$(top -l 1 | grep "PhysMem:" | awk '{print $2 " used, " $6 " unused"}')
-        fi
-        if (( $+commands[df] )); then
-            disk_info=$(df -h / | awk 'NR==2{printf "%s/%s (%s)", $3, $2, $5}')
-        fi
-        if (( $+commands[brew] )); then
+        elif (( $+functions[is_osx] )) && is_osx && (( $+commands[brew] )); then
             local num_outdated
             num_outdated=$(brew outdated | wc -l | tr -d ' ')
             if (( num_outdated > 0 )); then
-                pkg_info="${fg_bold[yellow]}${num_outdated} packages can be updated${reset_color}"
+                echo "${fg_bold[yellow]}${num_outdated} packages can be updated${reset_color}"
             fi
         fi
-    fi
+    }
+
+    # --- Get System Info ---
+    local mem_info disk_info pkg_info
+    mem_info=$(_get_mem_info)
+    disk_info=$(_get_disk_info)
+    pkg_info=$(_get_pkg_info)
 
     # Get mise outdated info
     if (( $+commands[mise] )); then
+        local -a mise_updates
         local num_outdated
         num_outdated=$(mise outdated 2>/dev/null | grep -c . || true)
         if (( num_outdated > 0 )); then
-            local mise_info
-            mise_info="${fg_bold[yellow]}${num_outdated} packages can be updated${reset_color}"
+            mise_updates+=("${fg_bold[yellow]}${num_outdated} packages can be updated${reset_color}")
         fi
 
         # Get mise self-update info
         if (mise version 2>&1 | grep -q 'available'); then
-            if [[ -n "$mise_info" ]]; then
-                mise_info="${mise_info}, "
-            fi
-            mise_info="${mise_info}${fg_bold[red]}mise self-update is available${reset_color}"
+            mise_updates+=("${fg_bold[red]}mise self-update is available${reset_color}")
+        fi
+
+        if (( ${#mise_updates} > 0 )); then
+            local mise_info="${(j/, /)mise_updates}"
         fi
     fi
 
