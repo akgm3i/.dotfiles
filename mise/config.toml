@@ -5,8 +5,8 @@ bat = "latest"
 eza = "latest"
 fd = "latest"
 fzf = "latest"
-ghq = "latest"
 gh = "latest"
+ghq = "latest"
 jq = "latest"
 
 # languages

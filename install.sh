@@ -143,6 +143,7 @@ create_symlinks() {
 
     local symlinks=(
         "$DOTPATH/git:$XDG_CONFIG_HOME/git"
+        "$DOTPATH/gh:$XDG_CONFIG_HOME/gh"
         "$DOTPATH/tmux:$XDG_CONFIG_HOME/tmux"
         "$DOTPATH/zsh:$XDG_CONFIG_HOME/zsh"
         "$DOTPATH/sheldon:$XDG_CONFIG_HOME/sheldon"
