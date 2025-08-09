@@ -134,16 +134,14 @@ EOF
     fi
 
     # Get Git status for dotfiles
-    if (( $+functions[is_git_repo] )) && (cd "$ZDOTDIR" && is_git_repo); then
-        local git_status
-        if [[ -n "$(git -C "$ZDOTDIR" status --porcelain)" ]]; then
-            git_status="${fg_bold[red]}Uncommitted changes${reset_color}"
-        else
-            git_status="${fg_bold[green]}Clean${reset_color}"
-        fi
-        labels+=("Dotfiles")
-        values+=("$git_status")
+    local git_status
+    if [[ -n "$(git -C "$ZDOTDIR" status --porcelain)" ]]; then
+        git_status="${fg_bold[red]}Uncommitted changes${reset_color}"
+    else
+        git_status="${fg_bold[green]}Clean${reset_color}"
     fi
+    labels+=("Dotfiles")
+    values+=("$git_status")
 
     if [[ -n "$mise_info" ]]; then
         labels+=("Mise")
