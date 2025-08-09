@@ -1,8 +1,15 @@
 # akgm dotfiles
 
+[![Last Commit](https://img.shields.io/github/last-commit/akgm3i/.dotfiles)](https://github.com/akgm3i/.dotfiles/commits/main)
+
+
 ## About
 
-### Depends
+### OS
+
+Ubuntu (WSL) / macOS
+
+### Tools
 
 - Git: Git related global settings
 - iTerm2: macOS用のターミナル
@@ -13,38 +20,42 @@
 ## インストール
 
 ```bash
-make install
+curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/refs/heads/master/install.sh | bash
 ```
 
 ### インストール内容
 
-`make install` は以下の処理を順に実行する。
+`install.sh` は以下の処理を順に実行する。
 
 1.  依存関係のチェックとインストール:
-    *   `git` や `zsh` などの依存しているアプリケーションがインストールされているかを確認する。
-    *   不足している場合は、OSに応じて `apt` (Linux) または `brew` (macOS) を使用して自動的にインストールを行う。
+    *   [Tools](#tools) がインストールされているかを確認する。
+    *   不足している場合は、OSに応じて `apt` (Debian/Ubuntu) または `brew` (macOS) を使用して自動的にインストールを行う。
     *   パスワードの入力が求められることがある。
     *   macOSの場合、Homebrewがインストールされていない場合はこれも自動でインストールする。
 
-2.  dotfilesリポジトリのクローンまたは更新:
+2.  .dotfilesのクローン / 更新:
     *   `DOTPATH` で指定された場所にdotfilesリポジトリが存在しない場合、 [.dotfiles](https://github.com/akgm3i/.dotfiles) をクローンする。
     *   既に存在する場合は、最新の状態に更新 (`git pull`) する。
 
 3.  シンボリックリンクの作成:
-    *   dotfiles内の設定ファイルやディレクトリへのシンボリックリンクを `$XDG_CONFIG_HOME` や `$HOME` 配下に作成する。
+    *   .dotfiles内の設定ファイルやディレクトリへのシンボリックリンクを `$XDG_CONFIG_HOME` や `$HOME` 配下に作成する。
     *   既存のファイルやディレクトリがある場合、それらは `$XDG_DATA_HOME/dotfiles/backup_YYYYMMDDHHMMSS/` 以下にバックアップする。
 
 4.  デフォルトシェルのZshへの変更:
-    *   デフォルトシェルがZshでない場合、Zshに変更します。
+    *   デフォルトシェルがZshでない場合、Zshに変更する。
     *   パスワードの入力が求められることがある。
 
 ### 環境変数
 
 #### `DOTPATH`
 
-.dotfilesが配置される場所を示す。
+.dotfilesリポジトリをクローンする場所を指定する。
+デフォルトでは、`install.sh` があるディレクトリの `.dotfiles` サブディレクトリ (`$PWD/.dotfiles`) となる。
 
-デフォルト値: `install.sh` 実行ディレクトリが `.dotfiles` であれば、そのディレクトリ (`$(CURDIR)`) 。そうでなければ実行ディレクトリ直下の `.dotfiles` (`$(CURDIR)/.dotfiles`)
+> 例: ~/src/github.com/akgm3i/.dotfiles にインストールする場合
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/main/install.sh | DOTPATH="$HOME/src/github.com/akgm3i/.dotfiles" bash
+> ```
 
 ## アンインストール
 
