@@ -45,7 +45,7 @@ EOF
     sspider_body=$(cat << 'EOF'
   / _ \
 \_\(A)/_/
- _//o\\\\_
+ _//o\\_
   /   \
 EOF
 )
@@ -110,7 +110,7 @@ EOF
     labels=(
         "User"
         "Host"
-        "This is ZSH"
+        "Zsh"
         "DISPLAY on"
         "System"
         "Uptime"
@@ -170,6 +170,12 @@ EOF
     done
 
     # --- Helper Functions ---
+
+    # Escape backslashes for echo -e.
+    _escape_for_echo() {
+        # Replace every backslash with a double backslash.
+        print -r -- "${1//\\/\\\\}"
+    }
 
     # Get the visible width of a string (stripping ANSI codes).
     _get_string_width() {
@@ -246,7 +252,7 @@ EOF
     local thread_height=$((display_height - art_height))
     local message_padding_top=$(( (display_height - ${#motd}) / 2 ))
 
-    # --- Draw Content ---\
+    # --- Draw Content ---
     # Pre-generate color bars to be used in the loop.
     local -a color_bars
     color_bars=("${(@f)$(_generate_color_line)}")
@@ -259,10 +265,10 @@ EOF
         if (( i > thread_height )); then
             local art_line_index=$((i - thread_height))
             if (( art_line_index <= art_height )); then
-                 art_pane="$(printf "%*s" $art_margin "")${art_lines[art_line_index]}"
+                 art_pane="$(printf "%*s" $art_margin "")$(_escape_for_echo "${art_lines[art_line_index]}")"
             fi
         else
-            art_pane="$(printf "%*s" $art_margin "")${spider_thread_art}"
+            art_pane="$(printf "%*s" $art_margin "")$(_escape_for_echo "${spider_thread_art}")"
         fi
         art_pane="$(printf "%-${art_width}s" "$art_pane")"
 
