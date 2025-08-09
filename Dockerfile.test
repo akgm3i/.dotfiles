@@ -1,0 +1,27 @@
+FROM ubuntu:latest
+
+# Set noninteractive frontend to avoid prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install sudo and other basic dependencies
+RUN apt-get update && \
+    apt-get install -y sudo curl make && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user and add to sudo group
+# The password for testuser is set to "testuser"
+RUN useradd -m -s /bin/bash testuser && \
+    usermod -aG sudo testuser && \
+    echo "testuser:testuser" | chpasswd
+
+# Allow the user to use sudo with a password
+RUN echo "testuser ALL=(ALL) ALL" > /etc/sudoers.d/testuser
+
+# Switch to the new user
+USER testuser
+WORKDIR /home/testuser
+
+COPY ./install.sh /home/testuser/
+
+CMD ["/bin/bash"]
