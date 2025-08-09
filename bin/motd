@@ -45,7 +45,7 @@ EOF
     sspider_body=$(cat << 'EOF'
   / _ \
 \_\(A)/_/
- _//o\\_
+ _//o\\\\_
   /   \
 EOF
 )
@@ -197,9 +197,28 @@ EOF
         echo $max_width
     }
 
-    # --- Main Logic ---
+    # --- ANSI Color Functions ---
+    # Generate a line of ANSI colors for display.
+    _generate_color_line() {
+        local normal_colors=""
+        local bright_colors=""
+        local color_name
 
-    # Select the appropriate spider based on terminal height.
+        # Normal foreground colors (0-7)
+        for color_name in black red green yellow blue magenta cyan white; do
+            normal_colors+="${fg[$color_name]}██"
+        done
+        # Bright/bold foreground colors (8-15)
+        for color_name in black red green yellow blue magenta cyan white; do
+            bright_colors+="${fg_bold[$color_name]}██"
+        done
+
+        print -r -- "${normal_colors}${reset_color}"
+        print -r -- "${bright_colors}${reset_color}"
+    }
+
+     # --- Main Logic --s
+     # Select the appropriate spider based on terminal height.
     local spider_art spider_thread_art
     local lspider_height=${#${(f)lspider_body}}
     local sspider_height=${#${(f)sspider_body}}
@@ -229,7 +248,11 @@ EOF
     local thread_height=$((display_height - art_height))
     local message_padding_top=$(( (display_height - ${#motd}) / 2 ))
 
-    # --- Draw Content ---
+    # --- Draw Content ---\
+    # Pre-generate color bars to be used in the loop.
+    local -a color_bars
+    color_bars=("${(@f)$(_generate_color_line)}")
+
     local i=1
     local art_pane message_pane
     for ((i = 1; i <= display_height; i++)); do
@@ -250,8 +273,12 @@ EOF
         local message_line_index=$((i - message_padding_top))
         if (( message_line_index > 0 && message_line_index <= ${#motd} )); then
             message_pane="$(printf "%*s" $message_margin "")${motd[message_line_index]}"
+        elif (( message_line_index == ${#motd} + 3 )); then
+            message_pane="$(printf "%*s" $message_margin "")${color_bars[1]}"
+        elif (( message_line_index == ${#motd} + 4 )); then
+            message_pane="$(printf "%*s" $message_margin "")${color_bars[2]}"
         fi
 
-        print -Pr -- "${art_pane}${message_pane}"
+        echo -e "${art_pane}${message_pane}"
     done
 }
