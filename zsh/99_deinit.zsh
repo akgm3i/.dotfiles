@@ -16,5 +16,5 @@
 # Display a spider ASCII art on exit, if the terminal is large enough.
 #
 if [[ -o interactive ]]; then
-    source "${0:A:h}/motd.zsh"
+    motd
 fi

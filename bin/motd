@@ -1,6 +1,6 @@
+#!/usr/bin/env zsh
 #
 # This script displays a motd.
-# It's intended to be sourced from other zsh scripts.
 #
 
 ()
@@ -45,13 +45,16 @@ EOF
     sspider_body=$(cat << 'EOF'
   / _ \
 \_\(A)/_/
- _//o\\\\_
+ _//o\\_
   /   \
 EOF
 )
 
+    # Load zsh colors
+    autoload -Uz colors && colors
+
     # --- Get System Info ---
-    local mem_info disk_info pkg_info zsh_plugins_info
+    local mem_info disk_info pkg_info
     if (( $+functions[is_linux] )) && is_linux; then
         if (( $+commands[free] )); then
             mem_info=$(free -h | awk 'NR==2{printf "%s/%s", $3, $2}')
@@ -84,13 +87,21 @@ EOF
         fi
     fi
 
-    # Get Zsh plugins info
-    local sheldon_config="$ZDOTDIR/sheldon/plugins.toml"
-    if [[ -f "$sheldon_config" ]]; then
-        local num_plugins
-        num_plugins=$(grep -c '\[plugins\.' "$sheldon_config")
-        if (( num_plugins > 0 )); then
-            zsh_plugins_info="${num_plugins} plugins managed by sheldon"
+    # Get mise outdated info
+    if (( $+commands[mise] )); then
+        local num_outdated
+        num_outdated=$(mise outdated 2>/dev/null | grep -c . || true)
+        if (( num_outdated > 0 )); then
+            local mise_info
+            mise_info="${fg_bold[yellow]}${num_outdated} packages can be updated${reset_color}"
+        fi
+
+        # Get mise self-update info
+        if (mise version 2>&1 | grep -q 'available'); then
+            if [[ -n "$mise_info" ]]; then
+                mise_info="${mise_info}, "
+            fi
+            mise_info="${mise_info}${fg_bold[red]}mise self-update is available${reset_color}"
         fi
     fi
 
@@ -134,13 +145,14 @@ EOF
         values+=("$git_status")
     fi
 
+    if [[ -n "$mise_info" ]]; then
+        labels+=("Mise")
+        values+=("$mise_info")
+    fi
+
     if [[ -n "$pkg_info" ]]; then
         labels+=("Packages")
         values+=("$pkg_info")
-    fi
-    if [[ -n "$zsh_plugins_info" ]]; then
-        labels+=("Zsh Plugins")
-        values+=("$zsh_plugins_info")
     fi
 
     # --- Format MOTD ---
@@ -151,9 +163,12 @@ EOF
         (( ${#label} > max_label_width )) && max_label_width=${#label}
     done
 
+    # Add 2 characters for padding after the longest label.
+    (( max_label_width += 1 ))
+
     local i
     for ((i = 1; i <= ${#labels}; i++)); do
-        motd+=("$(printf "${fg_bold[cyan]}%-${max_label_width}s: ${fg_bold[red]}%s${reset_color}" "${labels[$i]}" "${values[$i]}")")
+        motd+=("$(printf "${fg_bold[cyan]}%-${max_label_width}s: ${fg_bold[magenta]}%s${reset_color}" "${labels[$i]}" "${values[$i]}")")
     done
 
     # --- Helper Functions ---
