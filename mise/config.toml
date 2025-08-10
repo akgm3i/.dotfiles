@@ -1,13 +1,14 @@
 [tools]
 # tools
-usage = "latest"
 bat = "latest"
 eza = "latest"
 fd = "latest"
 fzf = "latest"
+gemini = "latest"
 gh = "latest"
 ghq = "latest"
 jq = "latest"
+usage = "latest"
 
 # languages
 deno = "2.4"
