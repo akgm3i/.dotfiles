@@ -1,3 +1,5 @@
 [user]
 	name = akgm3i
 	email = 51406499+akgm3i@users.noreply.github.com
+[init]
+	defaultbranch = main
