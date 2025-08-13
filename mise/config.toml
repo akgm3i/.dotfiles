@@ -12,7 +12,7 @@ usage = "latest"
 
 # languages
 deno = "2.4"
-go = "1.24"
-node = "lts"
+go = "1.25"
+node = "22"
 python = "3.13"
-rust = "1.88"
+rust = "1.89"
