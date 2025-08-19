@@ -1,0 +1,13 @@
+# Mock sheldon plugins file
+shell = 'zsh'
+
+[plugins]
+
+# Test description 2
+[plugins.test-plugin-2]
+github = 'test-user/test-plugin-2'
+use = ['*.zsh']
+
+# Test description 1
+[plugins.test-plugin-1]
+github = 'test-user/test-plugin-1'
