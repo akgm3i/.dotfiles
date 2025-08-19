@@ -65,6 +65,40 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/refs/heads/master/
 
 `install.sh` を実行した際のバックアップを復元する。
 
+## Zsh設定
+### Plugins
+- [romkatv/zsh-defer](https://github.com/romkatv/zsh-defer): Deferred loading of plugins in Zsh
+- [sindresorhus/pure](https://github.com/sindresorhus/pure): Pretty, minimal and fast ZSH prompt
+- [zsh-users/zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions): Fish-like autosuggestions for Zsh
+- [zsh-users/zsh-completions](https://github.com/zsh-users/zsh-completions): Additional completion definitions for Zsh
+- [zsh-users/zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting): Fish shell like syntax highlighting for Zsh
+
+### Aliases
+### Common aliases
+| Alias | Command | Description |
+| :--- | :--- | :--- |
+
+### ls
+| Alias | Command | Description |
+| :--- | :--- | :--- |
+| `..` | `cd ../` | Move to parent directory |
+| `ls` | `eza --git --icons` | List files with eza (git & icons) |
+| `ld` | `eza -ld` | Show info about the directory |
+| `ll` | `eza -lF` | Show long file information |
+| `la` | `eza -aF` | Show hidden files |
+| `lla` | `eza -laF` | Show hidden all files |
+| `lx` | `eza -lXB` | Sort by extension |
+| `lk` | `eza -lSr` | Sort by size, biggest last |
+| `lt` | `eza -ltr` | Sort by date, most recent last |
+| `lc` | `eza -ltcr` | Sort by and show change time, most recent last |
+| `lu` | `eza -ltur` | Sort by and show access time, most recent last |
+| `lr` | `eza -lR` | Recursive ls |
+
+### cat
+| Alias | Command | Description |
+| :--- | :--- | :--- |
+| `cat` | `bat` | Display file content with bat |
+
 ## Applications
 
 ### Git
