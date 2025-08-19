@@ -29,19 +29,44 @@ generate_plugins_markdown() {
 generate_aliases_markdown() {
   local aliases_file="$1"
   awk '
-    function print_header() {
-      print "| Alias | Command | Description |"
-      print "| :--- | :--- | :--- |"
-    }
-    /^#[[:space:]][A-Za-z0-9-]+([[:space:]][A-Za-z0-9-]+)?$/ {
-      if (category_name != "") { print "" }
-      category_name = $0
-      gsub(/^#[[:space:]]+/, "", category_name)
-      print "### " category_name
-      print_header()
+    # Match lines that are headers, e.g., "#- Header" or "##- Sub-header"
+    /^\s*#+-/ {
+      # If the previous category had aliases, print a newline for separation.
+      if (header_printed) {
+        print ""
+      }
+      header_printed = 0 # reset for the new category
+
+      header_line = $0
+
+      # Calculate header level
+      temp_line = header_line
+      gsub(/^[ \t]*/, "", temp_line)
+      match(temp_line, /^#+/)
+      level = RLENGTH
+
+      gsub(/^[ \t]*#+-[ \t]*/, "", header_line)
+
+      # Generate markdown hashes
+      # The base header level is 3 (###) because the docs are inserted
+      # under "## Zsh設定" -> "### Aliases". A level-1 comment (`#-`) should become `####`.
+      markdown_hashes = sprintf("%*s", level + 3, "")
+      gsub(/ /, "#", markdown_hashes)
+
+      # Print the header immediately
+      print markdown_hashes " " header_line
       next
     }
-    /^alias / {
+
+    /^\s*alias / {
+      # If this is the first alias in this category, print the table header.
+      if (!header_printed) {
+        print ""
+        print "| Alias | Command | Description |"
+        print "| :--- | :--- | :--- |"
+        header_printed = 1
+      }
+
       alias_name = $2; gsub(/=.*/, "", alias_name)
       command_str = $0; match(command_str, /'\''(.*)'\''/); command = substr(command_str, RSTART + 1, RLENGTH - 2)
       description = $0

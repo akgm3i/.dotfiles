@@ -2,8 +2,8 @@
 # Defines aliases.
 #
 
-# Common aliases
-# ls
+#- Common aliases
+##- ls
 alias ..='cd ../'          # Move to parent directory
 alias ls='eza --git --icons' # List files with eza (git & icons)
 alias ld='eza -ld'          # Show info about the directory
@@ -17,5 +17,5 @@ alias lc='eza -ltcr'        # Sort by and show change time, most recent last
 alias lu='eza -ltur'        # Sort by and show access time, most recent last
 alias lr='eza -lR'          # Recursive ls
 
-# cat
+##- cat
 alias cat='bat'             # Display file content with bat
