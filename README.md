@@ -74,11 +74,9 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/refs/heads/master/
 - [zsh-users/zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting): Fish shell like syntax highlighting for Zsh
 
 ### Aliases
-### Common aliases
-| Alias | Command | Description |
-| :--- | :--- | :--- |
+#### Common aliases
+##### ls
 
-### ls
 | Alias | Command | Description |
 | :--- | :--- | :--- |
 | `..` | `cd ../` | Move to parent directory |
@@ -94,7 +92,8 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/refs/heads/master/
 | `lu` | `eza -ltur` | Sort by and show access time, most recent last |
 | `lr` | `eza -lR` | Recursive ls |
 
-### cat
+##### cat
+
 | Alias | Command | Description |
 | :--- | :--- | :--- |
 | `cat` | `bat` | Display file content with bat |

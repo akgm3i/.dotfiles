@@ -50,13 +50,15 @@ test_alias_list_generation() {
     local test_name="--aliases-only flag"
     local expected_aliases_md
     expected_aliases_md=$(cat <<'EOF'
-### Category 1
+#### Category 1
+
 | Alias | Command | Description |
 | :--- | :--- | :--- |
 | `t1` | `test command 1` | description 1 |
 | `t2` | `test command 2` | description 2 |
 
-### Category 2
+#### Category 2
+
 | Alias | Command | Description |
 | :--- | :--- | :--- |
 | `t3` | `test command 3` | description 3 |
@@ -82,13 +84,15 @@ test_readme_update() {
 - [test-user/test-plugin-2](https://github.com/test-user/test-plugin-2): Test description 2
 
 ### Aliases
-### Category 1
+#### Category 1
+
 | Alias | Command | Description |
 | :--- | :--- | :--- |
 | `t1` | `test command 1` | description 1 |
 | `t2` | `test command 2` | description 2 |
 
-### Category 2
+#### Category 2
+
 | Alias | Command | Description |
 | :--- | :--- | :--- |
 | `t3` | `test command 3` | description 3 |

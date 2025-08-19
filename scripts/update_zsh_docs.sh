@@ -29,19 +29,46 @@ generate_plugins_markdown() {
 generate_aliases_markdown() {
   local aliases_file="$1"
   awk '
-    function print_header() {
-      print "| Alias | Command | Description |"
-      print "| :--- | :--- | :--- |"
-    }
-    /^#[[:space:]][A-Za-z0-9-]+([[:space:]][A-Za-z0-9-]+)?$/ {
-      if (category_name != "") { print "" }
-      category_name = $0
-      gsub(/^#[[:space:]]+/, "", category_name)
-      print "### " category_name
-      print_header()
+    # Match lines that are headers, e.g., "# Header" or "## Sub-header"
+    /^\s*#+\s+[A-Za-z0-9]/ {
+      if (/Defines aliases\./ || /Mock aliases file/) { next } # Skip comment lines that are not headers
+      # If the previous category had aliases, print a newline for separation.
+      if (header_printed) {
+        print ""
+      }
+      header_printed = 0 # reset for the new category
+
+      header_line = $0
+
+      level = 0
+      temp_line = header_line
+      gsub(/^[ \t]*/, "", temp_line)
+      while (substr(temp_line, 1, 1) == "#") {
+        level++
+        temp_line = substr(temp_line, 2)
+      }
+
+      gsub(/^[ \t]*#+[ \t]*/, "", header_line)
+
+      markdown_hashes = ""
+      for (i = 0; i < level + 3; i++) {
+        markdown_hashes = markdown_hashes "#"
+      }
+
+      # Print the header immediately
+      print markdown_hashes " " header_line
       next
     }
-    /^alias / {
+
+    /^\s*alias / {
+      # If this is the first alias in this category, print the table header.
+      if (!header_printed) {
+        print ""
+        print "| Alias | Command | Description |"
+        print "| :--- | :--- | :--- |"
+        header_printed = 1
+      }
+
       alias_name = $2; gsub(/=.*/, "", alias_name)
       command_str = $0; match(command_str, /'\''(.*)'\''/); command = substr(command_str, RSTART + 1, RLENGTH - 2)
       description = $0
