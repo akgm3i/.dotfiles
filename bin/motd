@@ -86,11 +86,21 @@ EOF
         fi
     }
 
+    _get_git_info() {
+        # Get Git status for dotfiles
+        if [[ -n "$(git -C "$ZDOTDIR" status --porcelain)" ]]; then
+            echo "${fg_bold[red]}Uncommitted changes${reset_color}"
+        else
+            echo "${fg_bold[green]}Clean${reset_color}"
+        fi
+    }
+
     # --- Get System Info ---
-    local mem_info disk_info pkg_info
+    local mem_info disk_info pkg_info git_status
     mem_info=$(_get_mem_info)
     disk_info=$(_get_disk_info)
     pkg_info=$(_get_pkg_info)
+    git_status=$(_get_git_info)
 
     # Get mise outdated info
     if (( $+commands[mise] )); then
@@ -118,6 +128,7 @@ EOF
         "Host"
         "Zsh"
         "DISPLAY on"
+        "OS"
         "System"
         "Uptime"
     )
@@ -126,6 +137,7 @@ EOF
         "$(hostname)"
         "$ZSH_VERSION"
         "$DISPLAY"
+        "$(lsb_release -d | awk -F'\t' '{print $2}')"
         "$(uname -srm)"
         "$(uptime -p)"
     )
@@ -139,15 +151,10 @@ EOF
         values+=("$disk_info")
     fi
 
-    # Get Git status for dotfiles
-    local git_status
-    if [[ -n "$(git -C "$ZDOTDIR" status --porcelain)" ]]; then
-        git_status="${fg_bold[red]}Uncommitted changes${reset_color}"
-    else
-        git_status="${fg_bold[green]}Clean${reset_color}"
+    if [[ -n "$git_status" ]]; then
+        labels+=("Dotfiles")
+        values+=("$git_status")
     fi
-    labels+=("Dotfiles")
-    values+=("$git_status")
 
     if [[ -n "$mise_info" ]]; then
         labels+=("Mise")
