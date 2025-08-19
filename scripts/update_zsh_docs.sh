@@ -48,6 +48,8 @@ generate_aliases_markdown() {
       gsub(/^[ \t]*#+-[ \t]*/, "", header_line)
 
       # Generate markdown hashes
+      # The base header level is 3 (###) because the docs are inserted
+      # under "## Zsh設定" -> "### Aliases". A level-1 comment (`#-`) should become `####`.
       markdown_hashes = sprintf("%*s", level + 3, "")
       gsub(/ /, "#", markdown_hashes)
 
@@ -66,7 +68,7 @@ generate_aliases_markdown() {
       }
 
       alias_name = $2; gsub(/=.*/, "", alias_name)
-      command_str = $0; match(command_str, /'\'([^'\'']*)'\'/); command = substr(command_str, RSTART + 1, RLENGTH - 2)
+      command_str = $0; match(command_str, /'\''(.*)'\''/); command = substr(command_str, RSTART + 1, RLENGTH - 2)
       description = $0
       if (match(description, /#[[:space:]]+(.*)/)) {
         description = substr(description, RSTART + 1); gsub(/^[[:space:]]+/, "", description)
