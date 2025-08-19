@@ -29,9 +29,8 @@ generate_plugins_markdown() {
 generate_aliases_markdown() {
   local aliases_file="$1"
   awk '
-    # Match lines that are headers, e.g., "# Header" or "## Sub-header"
-    /^\s*#+\s+[A-Za-z0-9]/ {
-      if (/Defines aliases\./ || /Mock aliases file/) { next } # Skip comment lines that are not headers
+    # Match lines that are headers, e.g., "#- Header" or "##- Sub-header"
+    /^\s*#+-/ {
       # If the previous category had aliases, print a newline for separation.
       if (header_printed) {
         print ""
@@ -40,20 +39,17 @@ generate_aliases_markdown() {
 
       header_line = $0
 
-      level = 0
+      # Calculate header level
       temp_line = header_line
       gsub(/^[ \t]*/, "", temp_line)
-      while (substr(temp_line, 1, 1) == "#") {
-        level++
-        temp_line = substr(temp_line, 2)
-      }
+      match(temp_line, /^#+/)
+      level = RLENGTH
 
-      gsub(/^[ \t]*#+[ \t]*/, "", header_line)
+      gsub(/^[ \t]*#+-[ \t]*/, "", header_line)
 
-      markdown_hashes = ""
-      for (i = 0; i < level + 3; i++) {
-        markdown_hashes = markdown_hashes "#"
-      }
+      # Generate markdown hashes
+      markdown_hashes = sprintf("%*s", level + 3, "")
+      gsub(/ /, "#", markdown_hashes)
 
       # Print the header immediately
       print markdown_hashes " " header_line
