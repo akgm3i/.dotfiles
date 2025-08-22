@@ -88,11 +88,81 @@ EOF
 
     _get_git_info() {
         # Get Git status for dotfiles
-        if [[ -n "$(git -C "$ZDOTDIR" status --porcelain)" ]]; then
-            echo "${fg_bold[red]}Uncommitted changes${reset_color}"
-        else
-            echo "${fg_bold[green]}Clean${reset_color}"
+        local repo_path="$ZDOTDIR"
+        if ! git -C "$repo_path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            return
         fi
+
+        # --- Asynchronous, cached fetch using FETCH_HEAD ---
+        # To keep data fresh without slowing login, trigger a background fetch if
+        # the last fetch was more than 1 hour ago. We use .git/FETCH_HEAD's
+        # modification time as the most reliable source for the last fetch time.
+        local fetch_head_file="$repo_path/.git/FETCH_HEAD"
+        local fetch_interval_seconds=3600 # 1 hour
+        local last_fetch_time=0
+
+        if [[ -f "$fetch_head_file" ]]; then
+            # Cross-platform way to get modification time (epoch seconds)
+            if command -v stat >/dev/null; then
+                if [[ "$(uname)" == "Darwin" ]]; then # macOS
+                    last_fetch_time=$(stat -f %m "$fetch_head_file")
+                else # Linux
+                    last_fetch_time=$(stat -c %Y "$fetch_head_file")
+                fi
+            fi
+        fi
+
+        local current_time
+        current_time=$(date +%s)
+
+        if (( (current_time - last_fetch_time) > fetch_interval_seconds )); then
+            # Run fetch in the background for the next login.
+            # It's safe to run this concurrently; git handles the locking.
+            # We fetch only the main branch from origin for efficiency.
+            (git -C "$repo_path" fetch origin main >/dev/null 2>&1 &)
+        fi
+
+        # --- Git Status Calculation ---
+        # The rest of the function proceeds immediately, using currently available
+        # data for a fast motd. The background fetch will benefit subsequent logins.
+
+        # 1. Check for local changes
+        local local_changes
+        local_changes=$(git -C "$repo_path" status --porcelain)
+
+        # 2. Check for remote changes (ahead/behind)
+        local ahead=0 behind=0
+        local upstream
+        upstream=$(git -C "$repo_path" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)
+
+        if [[ -n "$upstream" ]]; then
+            local counts
+            counts=$(git -C "$repo_path" rev-list --left-right --count "$upstream...HEAD" 2>/dev/null)
+            if [[ $? -eq 0 && -n "$counts" ]]; then
+                behind=$(echo "$counts" | awk '{print $1}')
+                ahead=$(echo "$counts" | awk '{print $2}')
+            fi
+        fi
+
+        # 3. If everything is clean, return nothing.
+        if [[ -z "$local_changes" && "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
+            return
+        fi
+
+        # 4. Build the status string
+        local -a status_parts
+        if [[ -n "$local_changes" ]]; then
+            status_parts+=("${fg_bold[red]}Uncommitted changes${reset_color}")
+        fi
+        if (( behind > 0 )); then
+            status_parts+=("${fg[yellow]}Behind by $behind${reset_color}")
+        fi
+        if (( ahead > 0 )); then
+            status_parts+=("${fg[yellow]}Ahead by $ahead${reset_color}")
+        fi
+
+        # Join with commas and print
+        echo "${(j/, /)status_parts}"
     }
 
     # --- Get System Info ---
