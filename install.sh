@@ -38,7 +38,10 @@ setup_dotpath
 unset -f setup_dotpath
 
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}
+XDG_CACHE_HOME=${XDG_CACHE_HOME:-"$HOME/.cache"}
 XDG_DATA_HOME=${XDG_DATA_HOME:-"$HOME/.local/share"}
+XDG_STATE_HOME=${XDG_STATE_HOME:-"$HOME/.local/state"}
+XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-"$HOME/.temp"}
 
 # --- Globals ---
 backup_dir=""
@@ -139,7 +142,8 @@ create_symlinks() {
     log_info "Creating symbolic links..."
 
     # Ensure target directories exist
-    mkdir -p "$XDG_CONFIG_HOME"
+    mkdir -p "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_RUNTIME_DIR"
+    chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
 
     local symlinks=(
         "$DOTPATH/git:$XDG_CONFIG_HOME/git"
@@ -149,6 +153,9 @@ create_symlinks() {
         "$DOTPATH/sheldon:$XDG_CONFIG_HOME/sheldon"
         "$DOTPATH/mise:$XDG_CONFIG_HOME/mise"
         "$DOTPATH/npm:$XDG_CONFIG_HOME/npm"
+        "$DOTPATH/bash:$XDG_CONFIG_HOME/bash"
+        "$DOTPATH/bash/.bashrc:$HOME/.bashrc"
+        "$DOTPATH/bash/.bash_profile:$HOME/.bash_profile"
         "$DOTPATH/zsh/.zshenv:$HOME/.zshenv"
     )
 
@@ -188,6 +195,36 @@ create_symlinks() {
 
 install_tools() {
     log_info "Installing additional tools..."
+
+    local local_bin="$HOME/.local/bin"
+    mkdir -p "$local_bin"
+
+    local mise_bin="$local_bin/mise"
+    if ! has mise && [ ! -x "$mise_bin" ]; then
+        log_info "Installing mise..."
+        curl https://mise.run | sh
+    fi
+
+    if [ -x "$mise_bin" ]; then
+        local mise_config="$XDG_CONFIG_HOME/mise/config.toml"
+        if [ -r "$mise_config" ]; then
+            "$mise_bin" trust "$mise_config"
+        fi
+        "$mise_bin" install
+    elif has mise; then
+        local mise_config="$XDG_CONFIG_HOME/mise/config.toml"
+        if [ -r "$mise_config" ]; then
+            mise trust "$mise_config"
+        fi
+        mise install
+    fi
+
+    local sheldon_bin="$local_bin/sheldon"
+    if ! has sheldon && [ ! -x "$sheldon_bin" ]; then
+        log_info "Installing sheldon..."
+        curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh \
+            | bash -s -- --repo rossmacarthur/sheldon --to "$local_bin"
+    fi
 }
 
 switch_shell_to_zsh() {

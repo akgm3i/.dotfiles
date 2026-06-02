@@ -1,6 +1,6 @@
 # akgm dotfiles
 
-[![Last Commit](https://img.shields.io/github/last-commit/akgm3i/.dotfiles)](https://github.com/akgm3i/.dotfiles/commits/main)
+[![Last Commit](https://img.shields.io/github/last-commit/akgm3i/.dotfiles)](https://github.com/akgm3i/.dotfiles/commits/master)
 
 
 ## About
@@ -16,11 +16,12 @@ Ubuntu (WSL) / macOS
 - Sheldon: シェルプラグインマネージャー
 - Tmux: ターミナルマルチプレクサ
 - Zsh: shell
+- Bash: shell
 
 ## インストール
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/refs/heads/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh | bash
 ```
 
 ### インストール内容
@@ -41,7 +42,11 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/refs/heads/master/
     *   .dotfiles内の設定ファイルやディレクトリへのシンボリックリンクを `$XDG_CONFIG_HOME` や `$HOME` 配下に作成する。
     *   既存のファイルやディレクトリがある場合、それらは `$XDG_DATA_HOME/dotfiles/backup_YYYYMMDDHHMMSS/` 以下にバックアップする。
 
-4.  デフォルトシェルのZshへの変更:
+4.  追加ツールのインストール:
+    *   `mise` と `sheldon` が未導入の場合はインストールする。
+    *   `mise` のグローバル設定を trust し、定義されたツールをインストールする。
+
+5.  デフォルトシェルのZshへの変更:
     *   デフォルトシェルがZshでない場合、Zshに変更する。
     *   パスワードの入力が求められることがある。
 
@@ -54,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/refs/heads/master/
 
 > 例: ~/src/github.com/akgm3i/.dotfiles にインストールする場合
 > ```bash
-> curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/main/install.sh | DOTPATH="$HOME/src/github.com/akgm3i/.dotfiles" bash
+> curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh | DOTPATH="$HOME/src/github.com/akgm3i/.dotfiles" bash
 > ```
 
 ## アンインストール
@@ -74,7 +79,7 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/refs/heads/master/
 - [zsh-users/zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting): Fish shell like syntax highlighting for Zsh
 
 ### Aliases
-#### Common aliases
+#### Common aliases (shared with Bash)
 ##### ls
 
 | Alias | Command | Description |
@@ -97,6 +102,48 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/refs/heads/master/
 | Alias | Command | Description |
 | :--- | :--- | :--- |
 | `cat` | `bat` | Display file content with bat |
+
+## Bash設定
+- `~/.config/bash/[0-9][0-9]_*.bash` を `plugins.bash.toml` で定義した `sheldon` プロファイルから読み込む。
+- `shell/env.sh` に共通の環境変数をまとめており、Zsh/Bash 双方で共有。
+- 共通エイリアスは `shell/aliases.sh` に定義している。
+
+### Sheldon profiles
+
+| Shell | Config | Loaded items |
+| :--- | :--- | :--- |
+| Zsh | `sheldon/plugins.toml` | `pure`, `zsh-completions`, `zsh-defer`, `zsh-autosuggestions`, `zsh-syntax-highlighting`, `~/.config/zsh/[0-9][0-9]_*.zsh` |
+| Bash | `sheldon/plugins.bash.toml` | `~/.config/bash/[0-9][0-9]_*.bash` |
+
+## Mise設定
+
+`mise/config.toml` で以下のツールと言語ランタイムを管理する。
+
+### Tools
+
+| Tool | Version | Purpose |
+| :--- | :--- | :--- |
+| `bat` | `latest` | `cat` 代替のファイル表示 |
+| `npm:@openai/codex` | `latest` | OpenAI Codex CLI |
+| `eza` | `latest` | `ls` 代替のファイル一覧 |
+| `fd` | `latest` | ファイル検索 |
+| `fzf` | `latest` | fuzzy finder |
+| `gemini` | `latest` | Gemini CLI |
+| `gh` | `latest` | GitHub CLI |
+| `ghq` | `latest` | repository manager |
+| `jq` | `latest` | JSON processor |
+| `usage` | `latest` | CLI usage helper |
+
+### Languages
+
+| Runtime | Version |
+| :--- | :--- |
+| `deno` | `2.5` |
+| `go` | `1.25` |
+| `node` | `22` |
+| `python` | `3.13` |
+| `rust` | `1.89` |
+
 
 ## Applications
 

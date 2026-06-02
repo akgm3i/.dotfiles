@@ -1,6 +1,7 @@
 [tools]
 # tools
 bat = "latest"
+"npm:@openai/codex" = "latest"
 eza = "latest"
 fd = "latest"
 fzf = "latest"
@@ -11,7 +12,7 @@ jq = "latest"
 usage = "latest"
 
 # languages
-deno = "2.4"
+deno = "2.5"
 go = "1.25"
 node = "22"
 python = "3.13"

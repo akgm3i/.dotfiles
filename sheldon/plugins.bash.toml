@@ -1,0 +1,5 @@
+shell = 'bash'
+
+[plugins.custom]
+local = '~/.config/bash'
+use = ['[0-9][0-9]_*.bash']

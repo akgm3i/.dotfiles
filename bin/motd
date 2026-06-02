@@ -118,8 +118,8 @@ EOF
         if (( (current_time - last_fetch_time) > fetch_interval_seconds )); then
             # Run fetch in the background for the next login.
             # It's safe to run this concurrently; git handles the locking.
-            # We fetch only the main branch from origin for efficiency.
-            (git -C "$repo_path" fetch origin main >/dev/null 2>&1 &)
+            # Fetch only the master branch to avoid unnecessary remote refs.
+            (git -C "$repo_path" fetch origin master >/dev/null 2>&1 &)
         fi
 
         # --- Git Status Calculation ---
@@ -172,6 +172,25 @@ EOF
     pkg_info=$(_get_pkg_info)
     git_status=$(_get_git_info)
 
+    local os_info system_info uptime_info display_value
+    if (( $+commands[lsb_release] )); then
+        os_info=$(lsb_release -d 2>/dev/null | awk -F'\t' '{print $2}')
+    fi
+    if [[ -z "$os_info" ]] && (( $+commands[sw_vers] )); then
+        os_info="$(sw_vers -productName) $(sw_vers -productVersion)"
+    fi
+    os_info=${os_info:-$(uname -s)}
+
+    system_info=$(uname -srm 2>/dev/null || uname -s)
+
+    uptime_info=$(uptime -p 2>/dev/null)
+    if [[ -z "$uptime_info" ]]; then
+        uptime_info=$(uptime 2>/dev/null)
+    fi
+    uptime_info=${uptime_info:-unknown}
+
+    display_value=${DISPLAY:-"-"}
+
     # Get mise outdated info
     if (( $+commands[mise] )); then
         local -a mise_updates
@@ -206,10 +225,10 @@ EOF
         "$(whoami)"
         "$(hostname)"
         "$ZSH_VERSION"
-        "$DISPLAY"
-        "$(lsb_release -d | awk -F'\t' '{print $2}')"
-        "$(uname -srm)"
-        "$(uptime -p)"
+        "$display_value"
+        "$os_info"
+        "$system_info"
+        "$uptime_info"
     )
 
     if [[ -n "$mem_info" ]]; then
