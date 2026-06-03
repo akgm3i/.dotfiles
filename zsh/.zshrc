@@ -17,32 +17,17 @@ fi
 ########
 # mise #
 ########
-if [[ ! -f ${HOME}/.local/bin/mise ]]; then
-    # Install mise if not found
-    echo "mise not found. Installing..."
-    curl https://mise.run | sh
-    mise trust ${MISE_GLOBAL_CONFIG_FILE}
-    mise install
-    echo "mise installed."
+if command -v mise >/dev/null 2>&1; then
+    eval "$(mise activate zsh)"
 fi
-
-# activate mise
-eval "$(mise activate zsh)"
 
 
 ###########
 # sheldon #
 ###########
-if [[ ! -x ${HOME}/.local/bin/sheldon ]]; then
-    # Install sheldon if not found
-    echo "sheldon not found. Installing..."
-    curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh \
-        | bash -s -- --repo rossmacarthur/sheldon --to "${HOME}/.local/bin"
-    echo "sheldon installed."
+if command -v sheldon >/dev/null 2>&1; then
+    eval "$(sheldon source)"
 fi
-
-# activate sheldon
-eval "$(sheldon source)"
 
 
 # load local settings

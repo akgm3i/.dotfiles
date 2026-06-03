@@ -5,8 +5,9 @@
 # Source any secret files.
 ()
 {
-    local f
-    for f in ./*secret*.zsh(N-.)
+    local f secret_dir
+    secret_dir="${ZDOTDIR:-${DOTPATH:-$HOME/.dotfiles}/zsh}"
+    for f in "${secret_dir}"/*secret*.zsh(N-.)
     do
         source "$f"
     done

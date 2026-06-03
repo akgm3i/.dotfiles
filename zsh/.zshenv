@@ -1,103 +1,58 @@
 #
-# Defines environment variables.
+# Defines environment variables for Zsh.
 #
 
-# XDG Base Directory
-export XDG_CONFIG_HOME=${HOME}/.config
-export XDG_CACHE_HOME=${HOME}/.cache
-export XDG_DATA_HOME=${HOME}/.local/share
-export XDG_STATE_HOME=${HOME}/.local/state
-export XDG_RUNTIME_DIR=${HOME}/.temp
+# Avoid sourcing /etc/zshenv when possible.
+setopt no_global_rcs
 
-# DOTPATH
-export DOTPATH=${HOME}/.dotfiles
+# Ensure DOTPATH is available before loading shared configuration.
+if [[ -z ${DOTPATH:-} ]]; then
+    _dotfiles_zshenv_file="${ZDOTDIR:-$HOME}/.zshenv"
+    if [[ -L "${_dotfiles_zshenv_file}" ]] && command -v readlink >/dev/null 2>&1; then
+        _dotfiles_zshenv_target="$(readlink "${_dotfiles_zshenv_file}")"
+        if [[ "${_dotfiles_zshenv_target}" == /* ]]; then
+            _dotfiles_zshenv_file="${_dotfiles_zshenv_target}"
+        else
+            _dotfiles_zshenv_file="${_dotfiles_zshenv_file:h}/${_dotfiles_zshenv_target}"
+        fi
+    fi
+    _dotfiles_zshenv_dir="$(cd "${_dotfiles_zshenv_file:h}" 2>/dev/null && pwd -P)"
+    if [[ -n "${_dotfiles_zshenv_dir}" ]]; then
+        _dotfiles_zshenv_file="${_dotfiles_zshenv_dir}/${_dotfiles_zshenv_file:t}"
+    fi
+    _dotfiles_candidate="${_dotfiles_zshenv_file:h:h}"
+    if [[ -r "${_dotfiles_candidate}/shell/env.sh" ]]; then
+        export DOTPATH="${_dotfiles_candidate}"
+    else
+        export DOTPATH=${HOME}/.dotfiles
+    fi
+    unset _dotfiles_zshenv_file _dotfiles_zshenv_target _dotfiles_zshenv_dir _dotfiles_candidate
+fi
+
+# Load shared, POSIX-compatible environment configuration.
+if [[ -r "${DOTPATH}/shell/env.sh" ]]; then
+    source "${DOTPATH}/shell/env.sh"
+fi
+
+# Zsh-specific directories and history configuration.
 export ZDOTDIR=${XDG_CONFIG_HOME}/zsh
-
-# History
-# History file
 export HISTFILE=${XDG_STATE_HOME}/zsh/history
-# History size in memory
 export HISTSIZE=10000
-# The number of histsize
 export SAVEHIST=1000000
-# The size of asking history
 export LISTMAX=50
-# Do not save history when running as root
+
 if [[ ${UID} -eq 0 ]]; then
     unset HISTFILE
     export SAVEHIST=0
 fi
 
-# LANGUAGE
-export LANGUAGE='en_US.UTF-8'
-export LANG=${LANGUAGE}
-export LC_ALL=${LANGUAGE}
-export LC_CTYPE=${LANGUAGE}
-
-# Editor
-export EDITOR=nvim
-export CVSEDITOR=${EDITOR}
-export SVN_EDITOR=${EDITOR}
-export GIT_EDITOR=${EDITOR}
-
-# Pager
-export PAGER=less
-
-# Less status line
-export LESS='-R -f -X -i -P ?f%f:(stdin). ?lb%lb?L/%L.. [?eEOF:?pb%pb\%..]'
-export LESSCHARSET='utf-8'
-
-# LESS man page colors (makes Man pages more readable).
-export LESS_TERMCAP_mb=$'\E[01;31m'
-export LESS_TERMCAP_md=$'\E[01;31m'
-export LESS_TERMCAP_me=$'\E[0m'
-export LESS_TERMCAP_se=$'\E[0m'
-export LESS_TERMCAP_so=$'\E[00;44;37m'
-export LESS_TERMCAP_ue=$'\E[0m'
-export LESS_TERMCAP_us=$'\E[01;32m'
-
-# ls command colors
-export LSCOLORS=exfxcxdxbxegedabagacad
-export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=46;34:cd=43;34:su=41;30:sg=46;30:tw=42;30:ow=43;30'
-
-# declare the environment variables
+# Spell correction configuration.
 export CORRECT_IGNORE='_*'
 export CORRECT_IGNORE_FILE='.*'
 
+# Word characters used when moving across words.
 export WORDCHARS='*?_-.[]~=&;!#$%^(){}<>'
 
-# fzf - command-line fuzzy finder (https://github.com/junegunn/fzf)
-export FZF_DEFAULT_OPTS="--extended --ansi --multi"
-
-# available $INTERACTIVE_FILTER
-export INTERACTIVE_FILTER="fzf:peco:percol:gof:pick"
-
-# tmux
-export TMUX_HOME=${DOTPATH}/tmux
-export TMUX_TMPDIR=${XDG_RUNTIME_DIR}
-
-# ghq
-export GHQ_ROOT=${HOME}/Projects
-
-# Programing Languages
-# Settings for Go
-export GOPATH=${XDG_DATA_HOME}/go
-
-# Settings for Node.js
-export NODE_REPL_HISTORY=${XDG_DATA_HOME}/node_repl_history
-export NPM_CONFIG_USERCONFIG=${XDG_CONFIG_HOME}/npm/npmrc
-
-# Settings for Rust
-export MISE_RUSTUP_HOME=${XDG_DATA_HOME}/rustup
-export MISE_CARGO_HOME=${XDG_DATA_HOME}/cargo
-
-# PATH
-setopt no_global_rcs
-typeset -gx -U path
-path=( \
-    ${HOME}/bin(N-/) \
-    ${HOME}/.local/bin \
-    ${DOTPATH}/bin(N-/) \
-    /usr/local/bin(N-/) \
-    ${path} \
-    )
+# Ensure PATH stays unique when converted to the Zsh array form.
+typeset -gU path
+path=(${(s/:/)PATH})

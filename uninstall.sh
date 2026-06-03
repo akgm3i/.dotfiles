@@ -30,6 +30,9 @@ remove_symlinks() {
         "$XDG_CONFIG_HOME/gh"
         "$XDG_CONFIG_HOME/npm"
         "$XDG_CONFIG_HOME/iterm2"
+        "$XDG_CONFIG_HOME/bash"
+        "$HOME/.bashrc"
+        "$HOME/.bash_profile"
         "$HOME/.zshenv"
     )
 
@@ -65,16 +68,19 @@ restore_backup() {
         # In interactive mode, let the user choose
         log_info "Available backups:"
         select backup_dir in "${backup_dirs[@]}" "Skip restoration"; do
-            if [ "$REPLY" == "Skip restoration" ] || [ -z "$REPLY" ]; then
+            if [ -z "$backup_dir" ]; then
+                log_error "Invalid selection."
+                continue
+            fi
+            if [ "$backup_dir" = "Skip restoration" ]; then
                 log_info "Skipping restoration."
                 return
             fi
             if [ -d "$backup_dir" ]; then
-                backup_to_restore=$backup_dir
+                backup_to_restore="$backup_dir"
                 break
-            else
-                log_error "Invalid selection."
             fi
+            log_error "Invalid selection."
         done
     fi
 
