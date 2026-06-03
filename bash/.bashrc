@@ -40,7 +40,7 @@ fi
 
 # History configuration
 HISTDIR="$XDG_STATE_HOME/bash"
-mkdir -p "$HISTDIR"
+[ -d "$HISTDIR" ] || mkdir -p "$HISTDIR"
 export HISTFILE="$HISTDIR/history"
 export HISTSIZE=10000
 export HISTFILESIZE=200000

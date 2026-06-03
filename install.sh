@@ -202,7 +202,7 @@ install_tools() {
     local mise_bin="$local_bin/mise"
     if ! has mise && [ ! -x "$mise_bin" ]; then
         log_info "Installing mise..."
-        curl https://mise.run | sh
+        curl -fsSL https://mise.run | sh
     fi
 
     if [ -x "$mise_bin" ]; then

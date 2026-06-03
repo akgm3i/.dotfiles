@@ -57,8 +57,15 @@ export MISE_RUSTUP_HOME="$XDG_DATA_HOME/rustup"
 export MISE_CARGO_HOME="$XDG_DATA_HOME/cargo"
 
 # History directories can be handled per-shell, but ensure base directories exist.
-mkdir -p "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME" "$XDG_RUNTIME_DIR"
-chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
+for _xdg_dir in "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME"; do
+  [ -d "$_xdg_dir" ] || mkdir -p "$_xdg_dir"
+done
+unset _xdg_dir
+
+if [ ! -d "$XDG_RUNTIME_DIR" ]; then
+  mkdir -p "$XDG_RUNTIME_DIR"
+  chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
+fi
 
 # Configure fzf defaults if available.
 export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS:---extended --ansi --multi}"
@@ -67,7 +74,7 @@ export INTERACTIVE_FILTER="${INTERACTIVE_FILTER:-fzf:peco:percol:gof:pick}"
 # Helper to prepend directories to PATH without duplicates.
 _path_prepend() {
   case ":$PATH:" in
-    *":$1:") return 0 ;;
+    *":$1:"*) return 0 ;;
   esac
 
   if [ -d "$1" ]; then
@@ -79,10 +86,10 @@ _path_prepend() {
   fi
 }
 
-_path_prepend "$HOME/bin"
-_path_prepend "$HOME/.local/bin"
-_path_prepend "$DOTPATH/bin"
 _path_prepend /usr/local/bin
+_path_prepend "$DOTPATH/bin"
+_path_prepend "$HOME/.local/bin"
+_path_prepend "$HOME/bin"
 export PATH
 
 unset -f _path_prepend
