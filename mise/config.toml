@@ -1,11 +1,11 @@
 [tools]
 # tools
+antigravity-cli = "latest"
 bat = "latest"
-"npm:@openai/codex" = "latest"
+codex = "latest"
 eza = "latest"
 fd = "latest"
 fzf = "latest"
-gemini = "latest"
 gh = "latest"
 ghq = "latest"
 jq = "latest"
