@@ -40,7 +40,8 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 
 3.  シンボリックリンクの作成:
     *   .dotfiles内の設定ファイルやディレクトリへのシンボリックリンクを `$XDG_CONFIG_HOME` や `$HOME` 配下に作成する。
-    *   既存のファイルやディレクトリがある場合、それらは `$XDG_DATA_HOME/dotfiles/backup_YYYYMMDDHHMMSS/` 以下にバックアップする。
+    *   既存のファイルやディレクトリがある場合、それらは `$XDG_DATA_HOME/dotfiles/backup_*/` 以下にバックアップする。
+    *   作成したリンクとバックアップの対応は `$XDG_STATE_HOME/dotfiles/install-state.tsv` に記録する。再実行時、既に正しいリンクは変更しない。
 
 4.  追加ツールのインストール:
     *   `mise` と `sheldon` が未導入の場合はインストールする。
@@ -55,7 +56,9 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 #### `DOTPATH`
 
 .dotfilesリポジトリをクローンする場所を指定する。
-デフォルトでは、`install.sh` があるディレクトリの `.dotfiles` サブディレクトリ (`$PWD/.dotfiles`) となる。
+ローカルのGit checkoutから実行した場合はそのcheckoutを使用する。単独で取得した
+`install.sh` から実行した場合は、スクリプトがあるディレクトリの `.dotfiles`
+サブディレクトリとなる。
 
 > 例: ~/src/github.com/akgm3i/.dotfiles にインストールする場合
 > ```bash
@@ -69,6 +72,9 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 ```
 
 `install.sh` を実行した際のバックアップを復元する。
+インストール状態に記録され、リンク先が記録内容と一致するリンクだけを削除する。
+インストール後に差し替えられたリンクや、元から存在したリンクは削除しない。
+`mise` と Sheldon のバイナリおよび管理データは共有インストールとして残す。
 
 ## Zsh設定
 ### Plugins

@@ -4,8 +4,9 @@
 set -euo pipefail
 
 # --- Configuration ---
-XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}
-XDG_DATA_HOME=${XDG_DATA_HOME:-"$HOME/.local/share"}
+XDG_STATE_HOME=${XDG_STATE_HOME:-"$HOME/.local/state"}
+DOTFILES_STATE_DIR=${DOTFILES_STATE_DIR:-"$XDG_STATE_HOME/dotfiles"}
+DOTFILES_INSTALL_STATE=${DOTFILES_INSTALL_STATE:-"$DOTFILES_STATE_DIR/install-state.tsv"}
 
 # --- Helper for logging ---
 log_info() {
@@ -18,208 +19,115 @@ log_error() {
 
 # --- Main functions ---
 
-remove_symlinks() {
-    log_info "Removing symbolic links..."
+append_state_record() {
+    local state_file=$1
+    local status=$2
+    local source=$3
+    local destination=$4
+    local backup=$5
 
-    local symlinks=(
-        "$XDG_CONFIG_HOME/git"
-        "$XDG_CONFIG_HOME/tmux"
-        "$XDG_CONFIG_HOME/sheldon"
-        "$XDG_CONFIG_HOME/zsh"
-        "$XDG_CONFIG_HOME/mise"
-        "$XDG_CONFIG_HOME/gh"
-        "$XDG_CONFIG_HOME/npm"
-        "$XDG_CONFIG_HOME/iterm2"
-        "$XDG_CONFIG_HOME/bash"
-        "$HOME/.bashrc"
-        "$HOME/.bash_profile"
-        "$HOME/.zshenv"
-    )
-
-    for link in "${symlinks[@]}"; do
-        if [ -L "$link" ]; then
-            rm "$link"
-            log_info "Removed symlink: $link"
-        else
-            log_info "Symlink not found, skipping: $link"
-        fi
-    done
+    printf '%s\t%s\t%s\t%s\n' "$status" "$source" "$destination" "$backup" >> "$state_file"
 }
 
-restore_backup() {
-    log_info "Searching for backups..."
-    local backup_parent_dir="$XDG_DATA_HOME/dotfiles"
-    if [ ! -d "$backup_parent_dir" ]; then
-        log_info "No backup directories found."
-        return
+uninstall_managed_links() {
+    log_info "Removing links recorded by the installer..."
+
+    if [ ! -r "$DOTFILES_INSTALL_STATE" ]; then
+        log_info "No installation state found; no links will be removed."
+        return 0
     fi
 
-    local backup_dirs=("$backup_parent_dir"/backup_*/)
-    if [ ${#backup_dirs[@]} -eq 0 ] || [ ! -d "${backup_dirs}" ]; then
-        log_info "No backup directories found."
-        return
-    fi
+    local state_tmp
+    state_tmp="$(mktemp "$DOTFILES_STATE_DIR/.uninstall-state.XXXXXX")"
+    chmod 600 "$state_tmp"
+    printf 'version\t1\n' > "$state_tmp"
 
-    local backup_to_restore
-    if [ "${CI-}" = "true" ]; then
-        # In CI, automatically select the latest backup
-        backup_to_restore=$(ls -td -- "$backup_parent_dir"/backup_*/ | head -n 1)
-    else
-        # In interactive mode, let the user choose
-        log_info "Available backups:"
-        select backup_dir in "${backup_dirs[@]}" "Skip restoration"; do
-            if [ -z "$backup_dir" ]; then
-                log_error "Invalid selection."
+    local incomplete=0
+    local status source destination backup
+    while IFS=$'\t' read -r status source destination backup; do
+        case "$status" in
+            version)
                 continue
-            fi
-            if [ "$backup_dir" = "Skip restoration" ]; then
-                log_info "Skipping restoration."
-                return
-            fi
-            if [ -d "$backup_dir" ]; then
-                backup_to_restore="$backup_dir"
-                break
-            fi
-            log_error "Invalid selection."
-        done
-    fi
-
-    if [ -n "$backup_to_restore" ]; then
-        log_info "Restoring files from: $backup_to_restore"
-        # Use -i for safety in interactive mode
-        local cp_opts="-r"
-        [ "${CI-}" != "true" ] && cp_opts="-ri"
-
-        # As we preserved the structure, we can copy the whole backup content to HOME
-        # The backup contains subdirectories like .config, etc.
-        if [ -d "$backup_to_restore" ]; then
-            # shellcheck disable=SC2086
-            cp $cp_opts "$backup_to_restore"/. "$HOME/"
-            log_info "Restoration from backup completed."
-        else
-            log_error "Backup directory not found: $backup_to_restore"
-        fi
-    fi
-}
-
-prompt_yes_no() {
-    while true; do
-        read -r -p "$1 [y/N]: " answer
-        case "$answer" in
-            [Yy]*) return 0 ;;
-            [Nn]*|"" ) return 1 ;;
-            *) log_error "Invalid input." ;;
-        esac
-    done
-}
-
-uninstall_sheldon() {
-    log_info "Checking for sheldon installation..."
-    local sheldon_path="$HOME/.local/bin/sheldon"
-    if [ -f "$sheldon_path" ]; then
-        # In CI, uninstall without prompting.
-        if [ "${CI-}" = "true" ] || prompt_yes_no "Do you want to uninstall sheldon?"; then
-            log_info "Uninstalling sheldon..."
-            rm "$sheldon_path"
-            # Attempt to remove the parent directory if it's empty
-            if [ -z "$(ls -A "$HOME/.local/bin")" ]; then
-                log_info "Removing empty directory: $HOME/.local/bin"
-                rmdir "$HOME/.local/bin"
-            fi
-            if [ -z "$(ls -A "$HOME/.local")" ]; then
-                log_info "Removing empty directory: $HOME/.local"
-                rmdir "$HOME/.local"
-            fi
-            log_info "sheldon uninstalled."
-        else
-            log_info "Skipping sheldon uninstallation."
-        fi
-    else
-        log_info "sheldon is not installed."
-    fi
-}
-
-uninstall_mise() {
-    log_info "Checking for mise installation..."
-    local mise_path="$HOME/.local/bin/mise"
-
-    # Check for the existence of the mise binary as the primary indicator of installation.
-    if [ ! -f "$mise_path" ]; then
-        log_info "mise binary not found at $mise_path. Skipping uninstallation."
-        return
-    fi
-
-    if [ "${CI-}" = "true" ] || prompt_yes_no "Do you want to uninstall mise?"; then
-        # Attempt to use the official uninstaller first if the command is available.
-        if command -v mise &> /dev/null; then
-            log_info "Uninstalling mise using 'mise implode'..."
-            if mise implode; then
-                log_info "mise uninstalled successfully via 'mise implode'."
-                # implode should remove the binary, but we double-check and remove if it's still there.
-                if [ -f "$mise_path" ]; then
-                    rm "$mise_path"
-                fi
-                log_info "mise uninstallation complete."
-                return
-            else
-                log_error "'mise implode' command failed. Proceeding with manual removal."
-            fi
-        else
-            log_info "'mise' command not found in PATH. Proceeding with manual removal."
-        fi
-
-        # Fallback to manual removal.
-        log_info "Attempting to manually remove mise files..."
-
-        # Remove the binary
-        log_info "Removing mise binary: $mise_path"
-        rm "$mise_path"
-
-        # Remove directories
-        local mise_data_dir=${MISE_DATA_DIR:-"$XDG_DATA_HOME/mise"}
-        local mise_state_dir=${MISE_STATE_DIR:-"$HOME/.local/state/mise"}
-        local mise_config_dir=${MISE_CONFIG_DIR:-"$XDG_CONFIG_HOME/mise"}
-        local mise_cache_dir
-
-        case "$(uname -s)" in
-            Linux*)
-                mise_cache_dir=${MISE_CACHE_DIR:-"$HOME/.cache/mise"}
                 ;;
-            Darwin*)
-                mise_cache_dir=${MISE_CACHE_DIR:-"$HOME/Library/Caches/mise"}
+            preexisting)
+                log_info "Leaving pre-existing link untouched: $destination"
+                continue
+                ;;
+            created)
                 ;;
             *)
-                mise_cache_dir=""
+                log_error "Keeping an unrecognized installation-state record."
+                append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+                incomplete=1
+                continue
                 ;;
         esac
 
-        local dirs_to_remove=("$mise_data_dir" "$mise_state_dir" "$mise_config_dir")
-        if [ -n "$mise_cache_dir" ]; then
-            dirs_to_remove+=("$mise_cache_dir")
+        if [ "$backup" != "-" ] \
+            && [ ! -e "$backup" ] \
+            && [ ! -L "$backup" ]; then
+            log_error "Refusing to remove $destination because its recorded backup is missing: $backup"
+            append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+            incomplete=1
+            continue
         fi
 
-        for dir in "${dirs_to_remove[@]}"; do
-            if [ -d "$dir" ]; then
-                log_info "Removing directory: $dir"
-                rm -rf "$dir"
-            else
-                log_info "Directory not found, skipping: $dir"
+        if [ -L "$destination" ]; then
+            if [ "$(readlink "$destination")" != "$source" ]; then
+                log_error "Refusing to remove a link not owned by this installation: $destination"
+                append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+                incomplete=1
+                continue
             fi
-        done
+            rm "$destination"
+            log_info "Removed managed link: $destination"
+        elif [ -e "$destination" ]; then
+            log_error "Refusing to replace an unmanaged path: $destination"
+            append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+            incomplete=1
+            continue
+        else
+            log_info "Managed link already absent: $destination"
+        fi
 
-        log_info "mise manual uninstallation process completed."
-    else
-        log_info "Skipping mise uninstallation."
+        if [ "$backup" != "-" ]; then
+            if ! mkdir -p "$(dirname "$destination")"; then
+                log_error "Could not create the parent directory for: $destination"
+                append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+                incomplete=1
+                continue
+            fi
+            if mv "$backup" "$destination"; then
+                log_info "Restored original path: $destination"
+            else
+                log_error "Could not restore the recorded backup for: $destination"
+                append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+                incomplete=1
+            fi
+        fi
+    done < "$DOTFILES_INSTALL_STATE"
+
+    if [ "$incomplete" -eq 0 ]; then
+        rm "$state_tmp" "$DOTFILES_INSTALL_STATE"
+        log_info "Installation state removed."
+        return 0
     fi
+
+    mv "$state_tmp" "$DOTFILES_INSTALL_STATE"
+    return 1
 }
 
 main() {
-    remove_symlinks
-    restore_backup
-    uninstall_sheldon
-    uninstall_mise
+    if uninstall_managed_links; then
+        log_info "mise and Sheldon installations were left untouched."
+        log_info "✅ Uninstallation completed successfully!"
+        return
+    fi
 
-    log_info "✅ Uninstallation completed successfully!"
+    log_error "Uninstallation is incomplete; unresolved entries remain in $DOTFILES_INSTALL_STATE"
+    return 1
 }
 
-main
+if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+    main "$@"
+fi
