@@ -153,7 +153,35 @@ test_bash_dotpath_from_symlink() {
   assert_eq "$home/.temp" "$runtime_dir" "bash creates default XDG_RUNTIME_DIR"
 }
 
+test_bash_loads_aliases_without_sheldon() {
+  local home fake_bin sheldon_log output
+  home="$TEST_DIR/bash-alias-home"
+  fake_bin="$TEST_DIR/fake-bin"
+  sheldon_log="$TEST_DIR/sheldon.log"
+  mkdir -p "$home" "$fake_bin"
+  ln -s "$REPO_ROOT/bash/.bashrc" "$home/.bashrc"
+
+  cat >"$fake_bin/sheldon" <<EOF
+#!/usr/bin/env bash
+printf 'invoked\n' >>"$sheldon_log"
+EOF
+  chmod +x "$fake_bin/sheldon"
+
+  output="$(
+    env -u DOTPATH HOME="$home" PATH="$fake_bin:$PATH" bash -ic \
+      'alias ll' 2>/dev/null
+  )"
+
+  assert_eq "alias ll='eza -lF'" "$output" "bash loads shared aliases directly"
+  if [ -e "$sheldon_log" ]; then
+    printf 'FAIL: bash invoked Sheldon for a static alias file\n' >&2
+    exit 1
+  fi
+  printf 'PASS: bash does not invoke Sheldon\n'
+}
+
 test_zsh_noninteractive_startup
 test_zsh_interactive_startup
 test_zsh_preserves_locale_overrides
 test_bash_dotpath_from_symlink
+test_bash_loads_aliases_without_sheldon

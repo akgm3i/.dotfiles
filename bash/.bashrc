@@ -53,14 +53,11 @@ if command -v mise >/dev/null 2>&1; then
   eval "$(mise activate bash)"
 fi
 
-###########
-# sheldon #
-###########
-if command -v sheldon >/dev/null 2>&1; then
-  eval "$( \
-    SHELDON_CONFIG_FILE="${XDG_CONFIG_HOME}/sheldon/plugins.bash.toml" \
-    sheldon source
-  )"
+###################
+# shared aliases  #
+###################
+if [ -r "$DOTPATH/bash/20_aliases.bash" ]; then
+  . "$DOTPATH/bash/20_aliases.bash"
 fi
 
 # Load local settings if present.
