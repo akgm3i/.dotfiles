@@ -52,12 +52,14 @@ make_stubs() {
 }
 
 test_startup_is_opt_in() {
-  local secret_dir output
-  secret_dir="$TEST_DIR/secrets"
-  mkdir -p "$secret_dir"
+  local config_home zdotdir output
+  config_home="$TEST_DIR/config"
+  zdotdir="$TEST_DIR/zdotdir"
+  mkdir -p "$config_home" "$zdotdir"
 
   output="$(
-    ZDOTDIR="$secret_dir" MOTD_DEINIT="$REPO_ROOT/zsh/99_deinit.zsh" \
+    XDG_CONFIG_HOME="$config_home" ZDOTDIR="$zdotdir" \
+      MOTD_DEINIT="$REPO_ROOT/zsh/99_deinit.zsh" \
       "$ZSH_BIN" -f -ic \
       'unset DOTFILES_MOTD_ON_START
        motd() { print -r -- called; }
@@ -66,7 +68,8 @@ test_startup_is_opt_in() {
   assert_eq "" "$output" "interactive startup does not run motd by default"
 
   output="$(
-    ZDOTDIR="$secret_dir" DOTFILES_MOTD_ON_START=1 \
+    XDG_CONFIG_HOME="$config_home" ZDOTDIR="$zdotdir" \
+      DOTFILES_MOTD_ON_START=1 \
       MOTD_DEINIT="$REPO_ROOT/zsh/99_deinit.zsh" \
       "$ZSH_BIN" -f -ic \
       'motd() { print -r -- called; }

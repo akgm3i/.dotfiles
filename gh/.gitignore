@@ -1,1 +1,3 @@
+# Prevent credentials created by gh from being committed during migration to
+# GH_TOKEN in the repository-external secrets file.
 /hosts.yml
