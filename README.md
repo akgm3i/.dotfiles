@@ -12,7 +12,7 @@ Ubuntu (WSL) / macOS
 ### Tools
 
 - Git: Git related global settings
-- iTerm2: macOS用のターミナル
+- iTerm2: macOS用ターミナルのDynamic Profile
 - Sheldon: シェルプラグインマネージャー
 - Tmux: ターミナルマルチプレクサ
 - Zsh: shell
@@ -42,6 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
     *   .dotfiles内の設定ファイルやディレクトリへのシンボリックリンクを `$XDG_CONFIG_HOME` や `$HOME` 配下に作成する。
     *   既存のファイルやディレクトリがある場合、それらは `$XDG_DATA_HOME/dotfiles/backup_*/` 以下にバックアップする。
     *   作成したリンクとバックアップの対応は `$XDG_STATE_HOME/dotfiles/install-state.tsv` に記録する。再実行時、既に正しいリンクは変更しない。
+    *   macOSではiTerm2のDynamic Profileを `~/Library/Application Support/iTerm2/DynamicProfiles/` に配置する。
 
 4.  追加ツールのインストール:
     *   `mise` と `sheldon` が未導入の場合はインストールする。
@@ -75,6 +76,15 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 インストール状態に記録され、リンク先が記録内容と一致するリンクだけを削除する。
 インストール後に差し替えられたリンクや、元から存在したリンクは削除しない。
 `mise` と Sheldon のバイナリおよび管理データは共有インストールとして残す。
+
+## iTerm2設定
+
+macOSでのみ、`iterm2/akgm3i.json` をiTerm2のDynamic Profileとして読み込む。
+シンボリックリンクはiTerm2から読み込めないため、内容のfingerprintを記録した
+管理対象の通常ファイルとして配置する。
+既存のiTerm2環境設定や他のDynamic Profileは変更しない。`akgm` と
+`akgm for trio` の配色、ステータスバー、12pt/14ptフォント設定を管理する。
+指定フォント `RictyDiminishedDiscordForPowerline-Regular` は別途インストールが必要。
 
 ## Zsh設定
 ### Plugins

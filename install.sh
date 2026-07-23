@@ -188,23 +188,31 @@ managed_symlink_matches() {
 state_status=""
 state_source=""
 state_backup=""
+state_fingerprint=""
 
 load_state_record() {
     local destination=$1
-    local record_status record_source record_destination record_backup
+    local record_status record_source record_destination record_backup record_fingerprint
 
     state_status=""
     state_source=""
     state_backup=""
+    state_fingerprint=""
     [ -r "$DOTFILES_INSTALL_STATE" ] || return 1
 
-    while IFS=$'\t' read -r record_status record_source record_destination record_backup; do
+    while IFS=$'\t' read -r \
+        record_status \
+        record_source \
+        record_destination \
+        record_backup \
+        record_fingerprint; do
         case "$record_status" in
-            created|preexisting)
+            copied|created|preexisting)
                 if [ "$record_destination" = "$destination" ]; then
                     state_status="$record_status"
                     state_source="$record_source"
                     state_backup="$record_backup"
+                    state_fingerprint="$record_fingerprint"
                     return 0
                 fi
                 ;;
@@ -219,18 +227,25 @@ append_state_record() {
     local source=$2
     local destination=$3
     local backup=$4
+    local fingerprint=${5:--}
 
-    printf '%s\t%s\t%s\t%s\n' "$status" "$source" "$destination" "$backup" >> "$state_tmp"
+    printf '%s\t%s\t%s\t%s\t%s\n' \
+        "$status" "$source" "$destination" "$backup" "$fingerprint" >> "$state_tmp"
 }
 
 state_has_destination() {
     local state_file=$1
     local destination=$2
-    local record_status record_source record_destination record_backup
+    local record_status record_source record_destination record_backup record_fingerprint
 
-    while IFS=$'\t' read -r record_status record_source record_destination record_backup; do
+    while IFS=$'\t' read -r \
+        record_status \
+        record_source \
+        record_destination \
+        record_backup \
+        record_fingerprint; do
         case "$record_status" in
-            created|preexisting)
+            copied|created|preexisting)
                 [ "$record_destination" = "$destination" ] && return 0
                 ;;
         esac
@@ -270,8 +285,110 @@ backup_destination() {
     fi
 }
 
+file_fingerprint() {
+    local file=$1
+    local output checksum size
+
+    [ -f "$file" ] && [ ! -L "$file" ] || return 1
+    if command -v shasum >/dev/null 2>&1; then
+        output="$(shasum -a 256 "$file")"
+        printf 'sha256:%s\n' "${output%% *}"
+        return
+    fi
+    if command -v sha256sum >/dev/null 2>&1; then
+        output="$(sha256sum "$file")"
+        printf 'sha256:%s\n' "${output%% *}"
+        return
+    fi
+
+    read -r checksum size _ < <(cksum "$file")
+    printf 'cksum:%s:%s\n' "$checksum" "$size"
+}
+
+managed_copy_matches() {
+    local file=$1
+    local recorded_fingerprint=$2
+
+    [ -n "$recorded_fingerprint" ] \
+        && [ -f "$file" ] \
+        && [ ! -L "$file" ] \
+        && [ "$(file_fingerprint "$file")" = "$recorded_fingerprint" ]
+}
+
+install_managed_copy() {
+    local src=$1
+    local dest=$2
+    local current_fingerprint
+    local previous_state=false
+    local record_backup="-"
+    local record_status="copied"
+
+    if [ ! -f "$src" ]; then
+        log_error "Source file not found: $src"
+        exit 1
+    fi
+
+    current_fingerprint="$(file_fingerprint "$src")"
+    if load_state_record "$dest"; then
+        previous_state=true
+    fi
+
+    if [ -f "$dest" ] && [ ! -L "$dest" ] && cmp -s "$src" "$dest"; then
+        if [ "$previous_state" = true ] \
+            && [ "$state_status" = "copied" ] \
+            && [ "$state_fingerprint" = "$current_fingerprint" ]; then
+            record_backup="$state_backup"
+        else
+            record_status="preexisting"
+        fi
+        append_state_record \
+            "$record_status" \
+            "$src" \
+            "$dest" \
+            "$record_backup" \
+            "$current_fingerprint"
+        log_info "Already copied $src -> $dest"
+        return
+    fi
+
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        if [ "$previous_state" = true ] \
+            && [ "$state_status" = "copied" ] \
+            && managed_copy_matches "$dest" "$state_fingerprint"; then
+            if [ "$state_backup" != "-" ] \
+                && [ ! -e "$state_backup" ] \
+                && [ ! -L "$state_backup" ]; then
+                log_error "Recorded backup is missing for $dest: $state_backup"
+                exit 1
+            fi
+            rm "$dest"
+            record_backup="$state_backup"
+        else
+            backup_destination "$dest"
+            record_backup="$backed_up_path"
+        fi
+    elif [ "$previous_state" = true ] && [ "$state_status" = "copied" ]; then
+        if [ "$state_backup" != "-" ] \
+            && [ ! -e "$state_backup" ] \
+            && [ ! -L "$state_backup" ]; then
+            log_error "Recorded backup is missing for $dest: $state_backup"
+            exit 1
+        fi
+        record_backup="$state_backup"
+    fi
+
+    cp "$src" "$dest"
+    append_state_record \
+        "copied" \
+        "$src" \
+        "$dest" \
+        "$record_backup" \
+        "$current_fingerprint"
+    log_info "Copied $src -> $dest"
+}
+
 create_symlinks() {
-    log_info "Creating symbolic links..."
+    log_info "Installing managed paths..."
 
     # Ensure target directories exist
     mkdir -p \
@@ -284,7 +401,7 @@ create_symlinks() {
     chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
     state_tmp="$(mktemp "$DOTFILES_STATE_DIR/.install-state.XXXXXX")"
     chmod 600 "$state_tmp"
-    printf 'version\t1\n' > "$state_tmp"
+    printf 'version\t2\n' > "$state_tmp"
 
     local symlinks=(
         "$DOTPATH/git:$XDG_CONFIG_HOME/git"
@@ -300,9 +417,14 @@ create_symlinks() {
         "$DOTPATH/zsh/.zshenv:$HOME/.zshenv"
     )
 
-    # Add OS-specific symlinks
+    local iterm_profile_source=""
+    local iterm_profile_destination=""
     if [ "$(uname)" = "Darwin" ]; then
-        symlinks+=("$DOTPATH/iterm2:$XDG_CONFIG_HOME/iterm2")
+        local iterm_dynamic_profiles_dir
+        iterm_dynamic_profiles_dir="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+        mkdir -p "$iterm_dynamic_profiles_dir"
+        iterm_profile_source="$DOTPATH/iterm2/akgm3i.json"
+        iterm_profile_destination="$iterm_dynamic_profiles_dir/akgm3i.json"
     fi
 
     for link in "${symlinks[@]}"; do
@@ -332,7 +454,7 @@ create_symlinks() {
                 # was changed outside the installer.
                 record_status="preexisting"
             fi
-            append_state_record "$record_status" "$src" "$dest" "$record_backup"
+            append_state_record "$record_status" "$src" "$dest" "$record_backup" "-"
             log_info "Already linked $src -> $dest"
             continue
         fi
@@ -358,18 +480,32 @@ create_symlinks() {
         fi
 
         ln -s "$src" "$dest"
-        append_state_record "created" "$src" "$dest" "$record_backup"
+        append_state_record "created" "$src" "$dest" "$record_backup" "-"
         log_info "Linked $src -> $dest"
     done
 
-    # Keep records for platform-specific links that are not part of this run.
+    if [ -n "$iterm_profile_source" ]; then
+        install_managed_copy "$iterm_profile_source" "$iterm_profile_destination"
+    fi
+
+    # Keep records for platform-specific paths that are not part of this run.
     if [ -r "$DOTFILES_INSTALL_STATE" ]; then
-        local old_status old_source old_destination old_backup
-        while IFS=$'\t' read -r old_status old_source old_destination old_backup; do
+        local old_status old_source old_destination old_backup old_fingerprint
+        while IFS=$'\t' read -r \
+            old_status \
+            old_source \
+            old_destination \
+            old_backup \
+            old_fingerprint; do
             case "$old_status" in
-                created|preexisting)
+                copied|created|preexisting)
                     if ! state_has_destination "$state_tmp" "$old_destination"; then
-                        append_state_record "$old_status" "$old_source" "$old_destination" "$old_backup"
+                        append_state_record \
+                            "$old_status" \
+                            "$old_source" \
+                            "$old_destination" \
+                            "$old_backup" \
+                            "${old_fingerprint:--}"
                     fi
                     ;;
             esac
