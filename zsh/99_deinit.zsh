@@ -13,9 +13,9 @@
     done
 }
 
-#
-# Display a spider ASCII art on exit, if the terminal is large enough.
-#
-if [[ -o interactive ]]; then
+# The local system summary is disabled by default. Run `motd` explicitly, or
+# opt in to displaying it during interactive startup.
+if [[ -o interactive && "${DOTFILES_MOTD_ON_START:-0}" == 1 ]] \
+    && (( $+commands[motd] || $+functions[motd] )); then
     motd
 fi

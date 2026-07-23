@@ -70,7 +70,14 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 
 `install.sh` を実行した際のバックアップを復元する。
 
+## MOTD
+
+`motd` を実行すると、端末とdotfilesのローカル情報を表示する。
+シェル起動時には実行されない。起動時表示を明示的に有効化する場合は、
+環境変数 `DOTFILES_MOTD_ON_START=1` を設定する。
+
 ## Zsh設定
+
 ### Plugins
 - [romkatv/zsh-defer](https://github.com/romkatv/zsh-defer): Deferred loading of plugins in Zsh
 - [sindresorhus/pure](https://github.com/sindresorhus/pure): Pretty, minimal and fast ZSH prompt
