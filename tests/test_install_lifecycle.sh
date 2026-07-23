@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-TEST_DIR="$(mktemp -d)"
+TEST_DIR="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$TEST_DIR"' EXIT
 
 assert_eq() {
