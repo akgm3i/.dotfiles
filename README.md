@@ -104,16 +104,15 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 | `cat` | `bat` | Display file content with bat |
 
 ## Bash設定
-- `~/.config/bash/[0-9][0-9]_*.bash` を `plugins.bash.toml` で定義した `sheldon` プロファイルから読み込む。
+- `.bashrc` から `bash/20_aliases.bash` を直接読み込む。単一ファイルの読み込みにプラグインマネージャーは使用しない。
 - `shell/env.sh` に共通の環境変数をまとめており、Zsh/Bash 双方で共有。
 - 共通エイリアスは `shell/aliases.sh` に定義している。
 
-### Sheldon profiles
+### Sheldon profile
 
 | Shell | Config | Loaded items |
 | :--- | :--- | :--- |
 | Zsh | `sheldon/plugins.toml` | `pure`, `zsh-completions`, `zsh-defer`, `zsh-autosuggestions`, `zsh-syntax-highlighting`, `~/.config/zsh/[0-9][0-9]_*.zsh` |
-| Bash | `sheldon/plugins.bash.toml` | `~/.config/bash/[0-9][0-9]_*.bash` |
 
 ## Mise設定
 
