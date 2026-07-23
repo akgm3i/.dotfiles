@@ -1,366 +1,133 @@
 #!/usr/bin/env zsh
-#
-# This script displays a motd.
-#
 
-()
-{
-    # --- Definitions ---
-    local lspider_body sspider_body
-    lspider_body=$(cat << 'EOF'
-              ,     :
-            ,'      :     '.
-          ,;        :      ';,
-        ,:'         :        ':.
-        ::          :         ;:
-       ,:       ,,,,,,,,,      ::
-       ::     .:::::::::::.    ::
-    ,  ::    :::::::::::::::   ::
-   ;   ::   :::::::▄▄▄:::::::  ':   .
-  ;    ::   ::::::▐█:▀█::::::   :;   ;
- :'    ::   ::::::▄█▀▀█::::::   :;    ;
-::     ':.  ::::::▐█:▪▐▌:::::  ,:     ::
-';.     ';;:;::::::▀::▀:::::;,;''    .:'
- ::         ';:::::::::::::;'        ::
-  ::.         '::;:::::;::'          :;
-   ;:.   ,.,,;;';:::::::;';;,,,.    ,:'
-    ':::'''' ,,';:::::::;",, '':::::;'
-        ,,,,;' ,;:::::::;, ':,,
-     ,,;"'   .:: ':::::' ;:   ";;,,
-   .:'      .:;   ;""";  ':.     "';.
-   :;      :;:            ';,      ::
-   ;      :;.               ;:     ::
-   ::    :;                  ;:    ::
-    '.  ,;                    ;:  .'
-     '  ::                    ::  '
-       ,:;                    ::.
-       ::'                     :;
-       ::                      ::
-       ::                      ::
-        ;:                    :;
-         ';                  ;'
-           ;                ;
-EOF
-)
-    sspider_body=$(cat << 'EOF'
-  / _ \
-\_\(A)/_/
- _//o\\_
-  /   \
-EOF
-)
+# Display a compact, local-only system summary.
+emulate -L zsh
+setopt no_aliases pipe_fail
 
-    # Load zsh colors
-    autoload -Uz colors && colors
+# Zsh maintains LINES and COLUMNS without an external tput call. Check them
+# before collecting system or repository information.
+local terminal_lines="${LINES:-24}"
+local terminal_columns="${COLUMNS:-80}"
+[[ "$terminal_lines" == <-> ]] || terminal_lines=24
+[[ "$terminal_columns" == <-> ]] || terminal_columns=80
 
-    # --- Helper Functions for System Info ---
-    _get_mem_info() {
-        if (( $+functions[is_linux] )) && is_linux && (( $+commands[free] )); then
-            free -h | awk 'NR==2{printf "%s/%s", $3, $2}'
-        elif (( $+functions[is_osx] )) && is_osx && (( $+commands[top] )); then
-            top -l 1 | grep "PhysMem:" | awk '{print $2 " used, " $6 " unused"}'
-        fi
-    }
+if (( terminal_lines < 10 || terminal_columns < 72 )); then
+    exit 0
+fi
 
-    _get_disk_info() {
-        if (( $+commands[df] )); then
-            df -h / | awk 'NR==2{printf "%s/%s (%s)", $3, $2, $5}'
-        fi
-    }
+_motd_os_info() {
+    local key value
 
-    _get_pkg_info() {
-        if (( $+functions[is_linux] )) && is_linux && [[ -x /usr/lib/update-notifier/apt-check ]]; then
-            local updates
-            updates=$(/usr/lib/update-notifier/apt-check 2>&1)
-            local num_updates=$(echo "$updates" | cut -d';' -f1)
-            local num_security=$(echo "$updates" | cut -d';' -f2)
-            if (( num_updates > 0 || num_security > 0 )); then
-                echo "${fg_bold[yellow]}${num_updates} updates, ${num_security} security updates${reset_color}"
+    if [[ -r /etc/os-release ]]; then
+        while IFS='=' read -r key value; do
+            if [[ "$key" == PRETTY_NAME ]]; then
+                value="${value#\"}"
+                value="${value%\"}"
+                print -r -- "$value"
+                return
             fi
-        elif (( $+functions[is_osx] )) && is_osx && (( $+commands[brew] )); then
-            local num_outdated
-            num_outdated=$(brew outdated | wc -l | tr -d ' ')
-            if (( num_outdated > 0 )); then
-                echo "${fg_bold[yellow]}${num_outdated} packages can be updated${reset_color}"
-            fi
-        fi
-    }
-
-    _get_git_info() {
-        local repo_path="${DOTPATH:-$HOME/.dotfiles}"
-        if ! git -C "$repo_path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-            return
-        fi
-
-        local fetch_head_file last_fetch_time=0
-        fetch_head_file=$(git -C "$repo_path" rev-parse --git-path FETCH_HEAD 2>/dev/null)
-        [[ "$fetch_head_file" == /* ]] || fetch_head_file="$repo_path/$fetch_head_file"
-
-        if [[ -f "$fetch_head_file" ]] && command -v stat >/dev/null; then
-            if [[ "$(uname)" == "Darwin" ]]; then
-                last_fetch_time=$(stat -f %m "$fetch_head_file")
-            else
-                last_fetch_time=$(stat -c %Y "$fetch_head_file")
-            fi
-        fi
-
-        local current_time
-        current_time=$(date +%s)
-
-        if (( current_time - last_fetch_time > 3600 )); then
-            (git -C "$repo_path" fetch origin refs/heads/master:refs/remotes/origin/master >/dev/null 2>&1 &)
-        fi
-
-        local local_changes
-        local_changes=$(git -C "$repo_path" status --porcelain)
-
-        local ahead=0 behind=0 counts
-
-        if git -C "$repo_path" rev-parse --verify --quiet master >/dev/null \
-            && git -C "$repo_path" rev-parse --verify --quiet origin/master >/dev/null \
-            && counts=$(git -C "$repo_path" rev-list --left-right --count origin/master...master 2>/dev/null); then
-            read behind ahead <<< "$counts"
-        fi
-
-        if [[ -z "$local_changes" && "$ahead" -eq 0 && "$behind" -eq 0 ]]; then
-            return
-        fi
-
-        local -a status_parts
-        if [[ -n "$local_changes" ]]; then
-            status_parts+=("${fg_bold[red]}Uncommitted changes${reset_color}")
-        fi
-        if (( behind > 0 )); then
-            status_parts+=("${fg[yellow]}Behind by $behind${reset_color}")
-        fi
-        if (( ahead > 0 )); then
-            status_parts+=("${fg[yellow]}Ahead by $ahead${reset_color}")
-        fi
-
-        # Join with commas and print
-        echo "${(j/, /)status_parts}"
-    }
-
-    # --- Get System Info ---
-    local mem_info disk_info pkg_info git_status
-    mem_info=$(_get_mem_info)
-    disk_info=$(_get_disk_info)
-    pkg_info=$(_get_pkg_info)
-    git_status=$(_get_git_info)
-
-    local os_info system_info uptime_info display_value
-    if (( $+commands[lsb_release] )); then
-        os_info=$(lsb_release -d 2>/dev/null | awk -F'\t' '{print $2}')
-    fi
-    if [[ -z "$os_info" ]] && (( $+commands[sw_vers] )); then
-        os_info="$(sw_vers -productName) $(sw_vers -productVersion)"
-    fi
-    os_info=${os_info:-$(uname -s)}
-
-    system_info=$(uname -srm 2>/dev/null || uname -s)
-
-    uptime_info=$(uptime -p 2>/dev/null)
-    if [[ -z "$uptime_info" ]]; then
-        uptime_info=$(uptime 2>/dev/null)
-    fi
-    uptime_info=${uptime_info:-unknown}
-
-    display_value=${DISPLAY:-"-"}
-
-    # Get mise outdated info
-    if (( $+commands[mise] )); then
-        local -a mise_updates
-        local num_outdated
-        num_outdated=$(mise outdated 2>/dev/null | grep -c . || true)
-        if (( num_outdated > 0 )); then
-            mise_updates+=("${fg_bold[yellow]}${num_outdated} packages can be updated${reset_color}")
-        fi
-
-        # Get mise self-update info
-        if (mise version 2>&1 | grep -q 'available'); then
-            mise_updates+=("${fg_bold[red]}mise self-update is available${reset_color}")
-        fi
-
-        if (( ${#mise_updates} > 0 )); then
-            local mise_info="${(j/, /)mise_updates}"
-        fi
+        done < /etc/os-release
     fi
 
-    # --- Prepare MOTD data ---
-    local -a labels values
-    labels=(
-        "User"
-        "Host"
-        "Zsh"
-        "DISPLAY on"
-        "OS"
-        "System"
-        "Uptime"
-    )
-    values=(
-        "$(whoami)"
-        "$(hostname)"
-        "$ZSH_VERSION"
-        "$display_value"
-        "$os_info"
-        "$system_info"
-        "$uptime_info"
-    )
-
-    if [[ -n "$mem_info" ]]; then
-        labels+=("Memory")
-        values+=("$mem_info")
-    fi
-    if [[ -n "$disk_info" ]]; then
-        labels+=("Disk (/)")
-        values+=("$disk_info")
-    fi
-
-    if [[ -n "$git_status" ]]; then
-        labels+=("Dotfiles")
-        values+=("$git_status")
-    fi
-
-    if [[ -n "$mise_info" ]]; then
-        labels+=("Mise")
-        values+=("$mise_info")
-    fi
-
-    if [[ -n "$pkg_info" ]]; then
-        labels+=("Packages")
-        values+=("$pkg_info")
-    fi
-
-    # --- Format MOTD ---
-    local -a motd
-    local max_label_width=0
-    local label
-    for label in "${labels[@]}"; do
-        (( ${#label} > max_label_width )) && max_label_width=${#label}
-    done
-
-    # Add 2 characters for padding after the longest label.
-    (( max_label_width += 1 ))
-
-    local i
-    for ((i = 1; i <= ${#labels}; i++)); do
-        motd+=("$(printf "${fg_bold[cyan]}%-${max_label_width}s: ${fg_bold[magenta]}%s${reset_color}" "${labels[$i]}" "${values[$i]}")")
-    done
-
-    # --- Helper Functions ---
-
-    # Escape backslashes for echo -e.
-    _escape_for_echo() {
-        # Replace every backslash with a double backslash.
-        print -r -- "${1//\\/\\\\}"
-    }
-
-    # Get the visible width of a string (stripping ANSI codes).
-    _get_string_width() {
-        local rendered_line
-        rendered_line=$(print -nrP -- "$1")
-        echo ${#rendered_line}
-    }
-
-    # Get the maximum width from a multi-line string.
-    _get_max_width() {
-        # Return 0 if input is empty.
-        if [[ -z "$1" ]]; then
-            echo 0
-            return
-        fi
-
-        local max_width=0 line width
-        # Use a while-read loop for robustness instead of parameter expansion.
-        while IFS= read -r line; do
-            width=$(_get_string_width "$line")
-            (( width > max_width )) && max_width=$width
-        done <<< "$1"
-        echo $max_width
-    }
-
-    # --- ANSI Color Functions ---
-    # Generate a line of ANSI colors for display.
-    _generate_color_line() {
-        local normal_colors=""
-        local bright_colors=""
-        local color_name
-
-        # Normal foreground colors (0-7)
-        for color_name in black red green yellow blue magenta cyan white; do
-            normal_colors+="${fg[$color_name]}██"
-        done
-        # Bright/bold foreground colors (8-15)
-        for color_name in black red green yellow blue magenta cyan white; do
-            bright_colors+="${fg_bold[$color_name]}██"
-        done
-
-        print -r -- "${normal_colors}${reset_color}"
-        print -r -- "${bright_colors}${reset_color}"
-    }
-
-     # --- Main Logic --s
-     # Select the appropriate spider based on terminal height.
-    local spider_art spider_thread_art
-    local lspider_height=${#${(f)lspider_body}}
-    local sspider_height=${#${(f)sspider_body}}
-    local prompt_margin=3
-
-    if (( LINES > lspider_height + prompt_margin )); then
-        spider_art=$lspider_body
-        spider_thread_art='                    :'
-    elif (( LINES > sspider_height + prompt_margin )); then
-        spider_art=$sspider_body
-        spider_thread_art='    |'
-    else
-        # Not enough space for any art.
+    if (( $+commands[sw_vers] )); then
+        print -r -- "$(sw_vers -productName) $(sw_vers -productVersion)"
         return
     fi
 
-    # --- Calculate Dimensions ---
-    local display_height=$((LINES - prompt_margin))
-    local art_margin=2
-    local art_width=$(( $(_get_max_width "$spider_art") + art_margin * 2 ))
-    local message_margin=4
-    local message_width=$((COLUMNS - art_width - message_margin * 2))
-
-    # --- Prepare Content ---
-    local art_lines=("${(@f)spider_art}")
-    local art_height=${#art_lines}
-    local thread_height=$((display_height - art_height))
-    local message_padding_top=$(( (display_height - ${#motd}) / 2 ))
-
-    # --- Draw Content ---
-    # Pre-generate color bars to be used in the loop.
-    local -a color_bars
-    color_bars=("${(@f)$(_generate_color_line)}")
-
-    local i=1
-    local art_pane message_pane
-    for ((i = 1; i <= display_height; i++)); do
-        # Art Pane
-        art_pane=""
-        if (( i > thread_height )); then
-            local art_line_index=$((i - thread_height))
-            if (( art_line_index <= art_height )); then
-                 art_pane="$(printf "%*s" $art_margin "")$(_escape_for_echo "${art_lines[art_line_index]}")"
-            fi
-        else
-            art_pane="$(printf "%*s" $art_margin "")$(_escape_for_echo "${spider_thread_art}")"
-        fi
-        art_pane="$(printf "%-${art_width}s" "$art_pane")"
-
-        # Message Pane
-        message_pane=""
-        local message_line_index=$((i - message_padding_top))
-        if (( message_line_index > 0 && message_line_index <= ${#motd} )); then
-            message_pane="$(printf "%*s" $message_margin "")${motd[message_line_index]}"
-        elif (( message_line_index == ${#motd} + 3 )); then
-            message_pane="$(printf "%*s" $message_margin "")${color_bars[1]}"
-        elif (( message_line_index == ${#motd} + 4 )); then
-            message_pane="$(printf "%*s" $message_margin "")${color_bars[2]}"
-        fi
-
-        echo -e "${art_pane}${message_pane}"
-    done
+    uname -s 2>/dev/null
 }
+
+_motd_git_info() {
+    local repo_path="${DOTPATH:-$HOME/.dotfiles}"
+    local branch upstream dirty counts
+    integer ahead=0 behind=0
+
+    (( $+commands[git] )) || return
+    [[ -d "$repo_path/.git" || -f "$repo_path/.git" ]] || return
+    git -C "$repo_path" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
+
+    branch=$(git -C "$repo_path" symbolic-ref --short -q HEAD 2>/dev/null)
+    if [[ -z "$branch" ]]; then
+        branch=$(git -C "$repo_path" rev-parse --short HEAD 2>/dev/null)
+    fi
+    [[ -n "$branch" ]] || return
+
+    dirty=$(git -C "$repo_path" status --porcelain --untracked-files=normal 2>/dev/null)
+
+    if upstream=$(git -C "$repo_path" rev-parse \
+        --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
+        && [[ -n "$upstream" ]] \
+        && counts=$(git -C "$repo_path" rev-list --left-right --count \
+            'HEAD...@{upstream}' 2>/dev/null); then
+        read -r ahead behind <<< "$counts"
+    fi
+
+    local repo_status="$branch"
+    [[ -n "$dirty" ]] && repo_status+=", dirty"
+    (( ahead > 0 )) && repo_status+=", ahead $ahead"
+    (( behind > 0 )) && repo_status+=", behind $behind"
+    print -r -- "$repo_status"
+}
+
+local os_info kernel_info uptime_info disk_info git_info
+os_info=$(_motd_os_info)
+kernel_info=$(uname -srm 2>/dev/null)
+uptime_info=$(uptime -p 2>/dev/null)
+[[ -n "$uptime_info" ]] || uptime_info=$(uptime 2>/dev/null)
+
+if (( $+commands[df] && $+commands[awk] )); then
+    disk_info=$(df -h / 2>/dev/null \
+        | awk 'NR == 2 { printf "%s/%s (%s)", $3, $2, $5; exit }')
+fi
+git_info=$(_motd_git_info)
+
+local -a labels values
+labels=(User Host Zsh OS Kernel Uptime)
+values=(
+    "${USER:-${USERNAME:-unknown}}"
+    "${HOST:-unknown}"
+    "${ZSH_VERSION:-unknown}"
+    "${os_info:-unknown}"
+    "${kernel_info:-unknown}"
+    "${uptime_info:-unknown}"
+)
+
+if [[ -n "$disk_info" ]]; then
+    labels+=(Disk)
+    values+=("$disk_info")
+fi
+if [[ -n "$git_info" ]]; then
+    labels+=(Dotfiles)
+    values+=("$git_info")
+fi
+
+local label_color='' value_color='' reset=''
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+    autoload -Uz colors
+    colors
+    label_color="${fg_bold[cyan]}"
+    value_color="${fg_bold[magenta]}"
+    reset="$reset_color"
+fi
+
+local -a spider summary
+spider=(
+    '    |'
+    '  / _ \'
+    '\_\(A)/_/'
+    ' _//o\\_'
+    '  /   \'
+)
+
+integer i row_count=${#labels}
+for (( i = 1; i <= ${#labels}; i++ )); do
+    summary+=("${label_color}${labels[i]}${reset}: ${value_color}${values[i]}${reset}")
+done
+(( ${#spider} > row_count )) && row_count=${#spider}
+
+local art_line summary_line
+for (( i = 1; i <= row_count; i++ )); do
+    art_line="${spider[i]:-}"
+    summary_line="${summary[i]:-}"
+    printf '  %-12s  %s\n' "$art_line" "$summary_line"
+done
