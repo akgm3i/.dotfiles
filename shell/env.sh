@@ -26,10 +26,9 @@ export GIT_EDITOR="$EDITOR"
 export PAGER="${PAGER:-less}"
 
 # Locale
-export LANGUAGE="${LANGUAGE:-en_US.UTF-8}"
-export LANG="$LANGUAGE"
-export LC_ALL="$LANGUAGE"
-export LC_CTYPE="$LANGUAGE"
+: "${LANG:=en_US.UTF-8}"
+: "${LANGUAGE:=$LANG}"
+export LANG LANGUAGE
 
 # Less configuration
 export LESS='-R -f -X -i -P ?f%f:(stdin). ?lb%lb?L/%L.. [?eEOF:?pb%pb\%..]'
