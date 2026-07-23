@@ -22,42 +22,54 @@ setup_dotpath() {
     fi
 
     # Executed from a local file.
-    local script_dir
-    script_dir="$(cd "$(dirname "$0")" && pwd)"
-    local git_config_path="$script_dir/.git/config"
+    local script_path="${1:-${BASH_SOURCE[0]:-$0}}"
+    local script_dir git_root
+    script_dir="$(cd "$(dirname "$script_path")" && pwd -P)"
 
-    if [ -f "$git_config_path" ] && grep -q "url = ${DOTFILES_REPO}" "$git_config_path"; then
-        # Executed from a local git directory.
+    if git_root="$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null)" \
+        && [ "$(cd "$git_root" && pwd -P)" = "$script_dir" ] \
+        && git -C "$script_dir" ls-files --error-unmatch -- "$(basename "$script_path")" >/dev/null 2>&1; then
+        # Executed from the root of a local checkout. The remote URL is
+        # intentionally irrelevant so SSH remotes and forks work as expected.
         DOTPATH="$script_dir"
     else
         # Executed from a standalone script.
         DOTPATH="$script_dir/.dotfiles"
     fi
 }
-setup_dotpath
-unset -f setup_dotpath
+setup_dotpath "${BASH_SOURCE[0]:-$0}"
 
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}
 XDG_CACHE_HOME=${XDG_CACHE_HOME:-"$HOME/.cache"}
 XDG_DATA_HOME=${XDG_DATA_HOME:-"$HOME/.local/share"}
 XDG_STATE_HOME=${XDG_STATE_HOME:-"$HOME/.local/state"}
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-"$HOME/.temp"}
+DOTFILES_STATE_DIR=${DOTFILES_STATE_DIR:-"$XDG_STATE_HOME/dotfiles"}
+DOTFILES_INSTALL_STATE=${DOTFILES_INSTALL_STATE:-"$DOTFILES_STATE_DIR/install-state.tsv"}
 
 # --- Globals ---
 backup_dir=""
+backup_sequence=0
+state_tmp=""
 
 # --- Cleanup function for trap ---
 cleanup() {
-    if [ "$?" != "0" ]; then
+    local exit_status=$?
+
+    if [ -n "$state_tmp" ] && [ -e "$state_tmp" ]; then
+        rm -f "$state_tmp"
+    fi
+
+    if [ "$exit_status" != "0" ]; then
         log_error "Installation failed."
         if [ -n "$backup_dir" ]; then
             log_info "Your original files were backed up to: $backup_dir"
             log_info "You can restore them manually."
         fi
     fi
-}
 
-trap cleanup EXIT
+    return "$exit_status"
+}
 
 # --- Check if a command exists ---
 has() {
@@ -137,13 +149,142 @@ check_dependencies() {
     fi
 }
 
+canonical_path() {
+    local path=$1
+    local dir base
+
+    if [ -d "$path" ]; then
+        (cd "$path" 2>/dev/null && pwd -P)
+        return
+    fi
+
+    dir="$(dirname "$path")"
+    base="$(basename "$path")"
+    (cd "$dir" 2>/dev/null && printf '%s/%s\n' "$(pwd -P)" "$base")
+}
+
+symlink_points_to() {
+    local link=$1
+    local expected=$2
+    local target
+
+    [ -L "$link" ] || return 1
+    target="$(readlink "$link")"
+    case "$target" in
+        /*) ;;
+        *) target="$(dirname "$link")/$target" ;;
+    esac
+
+    [ "$(canonical_path "$target")" = "$(canonical_path "$expected")" ]
+}
+
+managed_symlink_matches() {
+    local link=$1
+    local recorded_source=$2
+
+    [ -L "$link" ] && [ "$(readlink "$link")" = "$recorded_source" ]
+}
+
+state_status=""
+state_source=""
+state_backup=""
+
+load_state_record() {
+    local destination=$1
+    local record_status record_source record_destination record_backup
+
+    state_status=""
+    state_source=""
+    state_backup=""
+    [ -r "$DOTFILES_INSTALL_STATE" ] || return 1
+
+    while IFS=$'\t' read -r record_status record_source record_destination record_backup; do
+        case "$record_status" in
+            created|preexisting)
+                if [ "$record_destination" = "$destination" ]; then
+                    state_status="$record_status"
+                    state_source="$record_source"
+                    state_backup="$record_backup"
+                    return 0
+                fi
+                ;;
+        esac
+    done < "$DOTFILES_INSTALL_STATE"
+
+    return 1
+}
+
+append_state_record() {
+    local status=$1
+    local source=$2
+    local destination=$3
+    local backup=$4
+
+    printf '%s\t%s\t%s\t%s\n' "$status" "$source" "$destination" "$backup" >> "$state_tmp"
+}
+
+state_has_destination() {
+    local state_file=$1
+    local destination=$2
+    local record_status record_source record_destination record_backup
+
+    while IFS=$'\t' read -r record_status record_source record_destination record_backup; do
+        case "$record_status" in
+            created|preexisting)
+                [ "$record_destination" = "$destination" ] && return 0
+                ;;
+        esac
+    done < "$state_file"
+
+    return 1
+}
+
+create_backup_dir() {
+    local backup_parent="$XDG_DATA_HOME/dotfiles"
+
+    [ -n "$backup_dir" ] && return
+    mkdir -p "$backup_parent"
+    backup_dir="$(mktemp -d "$backup_parent/backup_$(date +%Y%m%d%H%M%S)_XXXXXX")"
+    mkdir -p "$backup_dir/items"
+    log_info "Created backup directory: $backup_dir"
+}
+
+backed_up_path=""
+
+backup_destination() {
+    local destination=$1
+
+    create_backup_dir
+    while :; do
+        backup_sequence=$((backup_sequence + 1))
+        backed_up_path="$backup_dir/items/item_$backup_sequence"
+        if [ ! -e "$backed_up_path" ] && [ ! -L "$backed_up_path" ]; then
+            break
+        fi
+    done
+
+    log_info "Backing up existing file: $destination"
+    if ! mv "$destination" "$backed_up_path"; then
+        log_error "Failed to back up $destination. Aborting."
+        exit 1
+    fi
+}
 
 create_symlinks() {
     log_info "Creating symbolic links..."
 
     # Ensure target directories exist
-    mkdir -p "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_RUNTIME_DIR"
+    mkdir -p \
+        "$XDG_CONFIG_HOME" \
+        "$XDG_CACHE_HOME" \
+        "$XDG_DATA_HOME" \
+        "$XDG_STATE_HOME" \
+        "$XDG_RUNTIME_DIR" \
+        "$DOTFILES_STATE_DIR"
     chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null || true
+    state_tmp="$(mktemp "$DOTFILES_STATE_DIR/.install-state.XXXXXX")"
+    chmod 600 "$state_tmp"
+    printf 'version\t1\n' > "$state_tmp"
 
     local symlinks=(
         "$DOTPATH/git:$XDG_CONFIG_HOME/git"
@@ -167,30 +308,76 @@ create_symlinks() {
     for link in "${symlinks[@]}"; do
         local src="${link%%:*}"
         local dest="${link#*:}"
-
-        if [ -e "$dest" ] || [ -L "$dest" ]; then
-            if [ -z "$backup_dir" ]; then
-                backup_dir="$XDG_DATA_HOME/dotfiles/backup_$(date +%Y%m%d%H%M%S)"
-                mkdir -p "$backup_dir"
-                log_info "Created backup directory: $backup_dir"
-            fi
-            log_info "Backing up existing file: $dest"
-            # Preserve directory structure in backup
-            local backup_path="$backup_dir/$(dirname "${dest#$HOME/}")"
-            mkdir -p "$backup_path"
-            if ! mv "$dest" "$backup_path/"; then
-                log_error "Failed to back up $dest. Aborting."
-                exit 1
-            fi
-        fi
+        local previous_state=false
+        local record_status="created"
+        local record_backup="-"
 
         if [ ! -e "$src" ]; then
             log_error "Source file not found: $src"
             exit 1
         fi
-        ln -snf "$src" "$dest"
+
+        if load_state_record "$dest"; then
+            previous_state=true
+        fi
+
+        if symlink_points_to "$dest" "$src"; then
+            if [ "$previous_state" = true ] \
+                && [ "$state_status" = "created" ] \
+                && managed_symlink_matches "$dest" "$state_source"; then
+                record_status="created"
+                record_backup="$state_backup"
+            else
+                # Do not claim ownership of a link that predates this install or
+                # was changed outside the installer.
+                record_status="preexisting"
+            fi
+            append_state_record "$record_status" "$src" "$dest" "$record_backup"
+            log_info "Already linked $src -> $dest"
+            continue
+        fi
+
+        if [ -e "$dest" ] || [ -L "$dest" ]; then
+            if [ "$previous_state" = true ] \
+                && [ "$state_status" = "created" ] \
+                && managed_symlink_matches "$dest" "$state_source"; then
+                if [ "$state_backup" != "-" ] \
+                    && [ ! -e "$state_backup" ] \
+                    && [ ! -L "$state_backup" ]; then
+                    log_error "Recorded backup is missing for $dest: $state_backup"
+                    exit 1
+                fi
+                rm "$dest"
+                record_backup="$state_backup"
+            else
+                backup_destination "$dest"
+                record_backup="$backed_up_path"
+            fi
+        elif [ "$previous_state" = true ] && [ "$state_status" = "created" ]; then
+            record_backup="$state_backup"
+        fi
+
+        ln -s "$src" "$dest"
+        append_state_record "created" "$src" "$dest" "$record_backup"
         log_info "Linked $src -> $dest"
     done
+
+    # Keep records for platform-specific links that are not part of this run.
+    if [ -r "$DOTFILES_INSTALL_STATE" ]; then
+        local old_status old_source old_destination old_backup
+        while IFS=$'\t' read -r old_status old_source old_destination old_backup; do
+            case "$old_status" in
+                created|preexisting)
+                    if ! state_has_destination "$state_tmp" "$old_destination"; then
+                        append_state_record "$old_status" "$old_source" "$old_destination" "$old_backup"
+                    fi
+                    ;;
+            esac
+        done < "$DOTFILES_INSTALL_STATE"
+    fi
+
+    mv "$state_tmp" "$DOTFILES_INSTALL_STATE"
+    state_tmp=""
 }
 
 install_tools() {
@@ -247,6 +434,8 @@ switch_shell_to_zsh() {
 }
 
 main() {
+    trap cleanup EXIT
+
     check_dependencies
     clone_or_update_repo
     create_symlinks
@@ -267,4 +456,6 @@ main() {
     fi
 }
 
-main
+if [ "${BASH_SOURCE[0]:-$0}" = "$0" ]; then
+    main "$@"
+fi
