@@ -70,6 +70,36 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 
 `install.sh` を実行した際のバックアップを復元する。
 
+## ローカル秘密設定
+
+API tokenなどの秘密値はリポジトリ内に置かず、
+`${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/secrets.zsh` で管理する。
+初回は次のように所有者だけがアクセスできるファイルを作成する。
+
+```bash
+secret_dir="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
+mkdir -p "$secret_dir"
+chmod 700 "$secret_dir"
+touch "$secret_dir/secrets.zsh"
+chmod 600 "$secret_dir/secrets.zsh"
+"${EDITOR:-vi}" "$secret_dir/secrets.zsh"
+```
+
+ファイルには、シェルへ公開する値だけを `export NAME='value'` の形式で記載する。
+GitHub CLIのtokenも `export GH_TOKEN='value'` として同じファイルで管理できる。
+
+Zshはこのファイルが通常ファイルであり、現在のユーザーが所有し、
+group/other権限を持たない場合だけ読み込む。symlinkや権限の緩いファイルは、
+秘密値を表示せず警告して読み飛ばす。
+
+従来の `$ZDOTDIR/*secret*.zsh` は誤commit防止のためignoreを継続するが、
+起動時には読み込まれない。内容を上記ファイルへ手動で移し、
+動作確認後に旧ファイルを削除する。
+
+`gh/hosts.yml` にtokenが保存されている場合は、`GH_TOKEN` への移行後に
+`gh auth status` を確認してから旧ファイルをリポジトリ外へ退避または削除する。
+移行中の誤commitを防ぐため、`gh/hosts.yml` のignoreは継続する。
+
 ## MOTD
 
 `motd` を実行すると、端末とdotfilesのローカル情報を表示する。

@@ -1,2 +1,2 @@
-# ignore secret
+# Migration guard only. Repository-local secret files are never sourced.
 /*secret*.zsh

@@ -142,8 +142,6 @@ fabric.properties
 
 
 # ---- MicrosoftOffice ----
-*.tmp
-
 # Word temporary
 ~$*.doc*
 

@@ -1,3 +1,2 @@
-- [ ] Protect sensitive tokens (e.g., GitHub) via external secrets or environment, not committed files.
 - [ ] Ensure XDG_RUNTIME_DIR (/home/akgm3i/.temp) is created (install script) before tmux uses it.
 - [ ] Respect externally supplied DOTPATH in .zshenv (use exported default).
