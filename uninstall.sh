@@ -25,39 +25,67 @@ append_state_record() {
     local source=$3
     local destination=$4
     local backup=$5
+    local fingerprint=${6:--}
 
-    printf '%s\t%s\t%s\t%s\n' "$status" "$source" "$destination" "$backup" >> "$state_file"
+    printf '%s\t%s\t%s\t%s\t%s\n' \
+        "$status" "$source" "$destination" "$backup" "$fingerprint" >> "$state_file"
+}
+
+file_fingerprint() {
+    local file=$1
+    local output checksum size
+
+    [ -f "$file" ] && [ ! -L "$file" ] || return 1
+    if command -v shasum >/dev/null 2>&1; then
+        output="$(shasum -a 256 "$file")"
+        printf 'sha256:%s\n' "${output%% *}"
+        return
+    fi
+    if command -v sha256sum >/dev/null 2>&1; then
+        output="$(sha256sum "$file")"
+        printf 'sha256:%s\n' "${output%% *}"
+        return
+    fi
+
+    read -r checksum size _ < <(cksum "$file")
+    printf 'cksum:%s:%s\n' "$checksum" "$size"
 }
 
 uninstall_managed_links() {
-    log_info "Removing links recorded by the installer..."
+    log_info "Removing paths recorded by the installer..."
 
     if [ ! -r "$DOTFILES_INSTALL_STATE" ]; then
-        log_info "No installation state found; no links will be removed."
+        log_info "No installation state found; no paths will be removed."
         return 0
     fi
 
     local state_tmp
     state_tmp="$(mktemp "$DOTFILES_STATE_DIR/.uninstall-state.XXXXXX")"
     chmod 600 "$state_tmp"
-    printf 'version\t1\n' > "$state_tmp"
+    printf 'version\t2\n' > "$state_tmp"
 
     local incomplete=0
-    local status source destination backup
-    while IFS=$'\t' read -r status source destination backup; do
+    local status source destination backup fingerprint
+    while IFS=$'\t' read -r status source destination backup fingerprint; do
         case "$status" in
             version)
                 continue
                 ;;
             preexisting)
-                log_info "Leaving pre-existing link untouched: $destination"
+                log_info "Leaving pre-existing path untouched: $destination"
                 continue
                 ;;
-            created)
+            copied|created)
                 ;;
             *)
                 log_error "Keeping an unrecognized installation-state record."
-                append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+                append_state_record \
+                    "$state_tmp" \
+                    "$status" \
+                    "$source" \
+                    "$destination" \
+                    "$backup" \
+                    "${fingerprint:--}"
                 incomplete=1
                 continue
                 ;;
@@ -67,33 +95,79 @@ uninstall_managed_links() {
             && [ ! -e "$backup" ] \
             && [ ! -L "$backup" ]; then
             log_error "Refusing to remove $destination because its recorded backup is missing: $backup"
-            append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+            append_state_record \
+                "$state_tmp" \
+                "$status" \
+                "$source" \
+                "$destination" \
+                "$backup" \
+                "${fingerprint:--}"
             incomplete=1
             continue
         fi
 
-        if [ -L "$destination" ]; then
-            if [ "$(readlink "$destination")" != "$source" ]; then
-                log_error "Refusing to remove a link not owned by this installation: $destination"
-                append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+        if [ "$status" = "created" ]; then
+            if [ -L "$destination" ]; then
+                if [ "$(readlink "$destination")" != "$source" ]; then
+                    log_error "Refusing to remove a link not owned by this installation: $destination"
+                    append_state_record \
+                        "$state_tmp" \
+                        "$status" \
+                        "$source" \
+                        "$destination" \
+                        "$backup" \
+                        "${fingerprint:--}"
+                    incomplete=1
+                    continue
+                fi
+                rm "$destination"
+                log_info "Removed managed link: $destination"
+            elif [ -e "$destination" ]; then
+                log_error "Refusing to replace an unmanaged path: $destination"
+                append_state_record \
+                    "$state_tmp" \
+                    "$status" \
+                    "$source" \
+                    "$destination" \
+                    "$backup" \
+                    "${fingerprint:--}"
                 incomplete=1
                 continue
+            else
+                log_info "Managed link already absent: $destination"
             fi
-            rm "$destination"
-            log_info "Removed managed link: $destination"
-        elif [ -e "$destination" ]; then
-            log_error "Refusing to replace an unmanaged path: $destination"
-            append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
-            incomplete=1
-            continue
         else
-            log_info "Managed link already absent: $destination"
+            if [ -f "$destination" ] \
+                && [ ! -L "$destination" ] \
+                && [ "$(file_fingerprint "$destination")" = "$fingerprint" ]; then
+                rm "$destination"
+                log_info "Removed managed copy: $destination"
+            elif [ -e "$destination" ] || [ -L "$destination" ]; then
+                log_error "Refusing to remove a modified managed copy: $destination"
+                append_state_record \
+                    "$state_tmp" \
+                    "$status" \
+                    "$source" \
+                    "$destination" \
+                    "$backup" \
+                    "${fingerprint:--}"
+                incomplete=1
+                continue
+            else
+                log_info "Managed copy already absent: $destination"
+            fi
         fi
 
         if [ "$backup" != "-" ]; then
             if ! mkdir -p "$(dirname "$destination")"; then
                 log_error "Could not create the parent directory for: $destination"
-                append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+                append_state_record \
+                    "$state_tmp" \
+                    "$status" \
+                    "$source" \
+                    "$destination" \
+                    "$backup" \
+                    "${fingerprint:--}"
                 incomplete=1
                 continue
             fi
@@ -101,7 +175,13 @@ uninstall_managed_links() {
                 log_info "Restored original path: $destination"
             else
                 log_error "Could not restore the recorded backup for: $destination"
-                append_state_record "$state_tmp" "$status" "$source" "$destination" "$backup"
+                append_state_record \
+                    "$state_tmp" \
+                    "$status" \
+                    "$source" \
+                    "$destination" \
+                    "$backup" \
+                    "${fingerprint:--}"
                 incomplete=1
             fi
         fi
