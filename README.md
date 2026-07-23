@@ -123,26 +123,30 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 
 | Tool | Version | Purpose |
 | :--- | :--- | :--- |
+| `antigravity-cli` | `latest` | Google Antigravity CLI |
 | `bat` | `latest` | `cat` 代替のファイル表示 |
-| `npm:@openai/codex` | `latest` | OpenAI Codex CLI |
+| `codex` | `latest` | OpenAI Codex CLI |
 | `eza` | `latest` | `ls` 代替のファイル一覧 |
 | `fd` | `latest` | ファイル検索 |
 | `fzf` | `latest` | fuzzy finder |
-| `gemini` | `latest` | Gemini CLI |
 | `gh` | `latest` | GitHub CLI |
 | `ghq` | `latest` | repository manager |
 | `jq` | `latest` | JSON processor |
+| `neovim` | `latest` | デフォルトエディター |
 | `usage` | `latest` | CLI usage helper |
 
 ### Languages
 
 | Runtime | Version |
 | :--- | :--- |
-| `deno` | `2.5` |
-| `go` | `1.25` |
-| `node` | `22` |
-| `python` | `3.13` |
-| `rust` | `1.89` |
+| `deno` | `2.9` |
+| `go` | `1.26` |
+| `node` | `24` |
+| `python` | `3.14` |
+| `rust` | `1.97` |
+
+`mise/mise.lock` は曖昧なバージョン指定を解決した結果とチェックサムを固定する。
+更新は明示的に `mise up` と `mise lock` を実行してコミットする。
 
 
 ## Applications
