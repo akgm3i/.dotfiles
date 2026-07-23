@@ -1,0 +1,66 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    name: Shell (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - macos-15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install shell tooling (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck zsh
+
+      - name: Install shell tooling (macOS)
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: brew install shellcheck
+
+      - name: Check Bash syntax
+        shell: bash
+        run: |
+          git ls-files '*.sh' '*.bash' |
+            while IFS= read -r file; do
+              bash -n "$file"
+            done
+
+      - name: Run ShellCheck
+        shell: bash
+        run: |
+          git ls-files '*.sh' '*.bash' |
+            while IFS= read -r file; do
+              shellcheck --severity=warning "$file"
+            done
+
+      - name: Check Zsh syntax
+        shell: bash
+        run: |
+          zsh -n bin/motd
+          git ls-files 'zsh/*.zsh' 'zsh/.zshenv' 'zsh/.zshrc' |
+            while IFS= read -r file; do
+              zsh -n "$file"
+            done
+
+      - name: Run tests
+        run: ./tests/run.sh
