@@ -135,6 +135,51 @@ test_zsh_preserves_locale_overrides() {
   assert_eq "C"$'\n'"C" "$output" "interactive zsh preserves caller locale overrides"
 }
 
+test_zsh_plugin_order() {
+  local order
+  order="$(
+    sed -n 's/^\[plugins\.\([^]]*\)\]$/\1/p' "$REPO_ROOT/sheldon/plugins.toml" |
+      paste -sd ' ' -
+  )"
+
+  assert_eq \
+    "pure zsh-completions custom zsh-autosuggestions zsh-syntax-highlighting" \
+    "$order" \
+    "sheldon loads local widgets before syntax highlighting"
+}
+
+test_fzf_history_cancel_preserves_buffer() {
+  if ! command -v zsh >/dev/null 2>&1 || ! command -v fzf >/dev/null 2>&1; then
+    printf 'SKIP: zsh and fzf are required for fzf integration test\n'
+    return
+  fi
+
+  local output buffer ctrl_r ctrl_t
+  output="$(
+    REPO_ROOT="$REPO_ROOT" zsh -fic '
+      unset TMUX
+      source "$REPO_ROOT/zsh/20_keybinds.zsh"
+      source "$REPO_ROOT/zsh/80_fzf.zsh"
+      print -r -- "__CTRL_R__$(bindkey -M viins "^R")"
+      print -r -- "__CTRL_T__$(bindkey "^T")"
+      fzf() { return 130 }
+      zle() { return 0 }
+      BUFFER="keep this buffer"
+      LBUFFER="$BUFFER"
+      fzf-history-widget >/dev/null 2>&1 || true
+      print -r -- "__BUFFER__$BUFFER"
+    ' 2>/dev/null
+  )"
+
+  buffer="$(printf '%s\n' "$output" | sed -n 's/^__BUFFER__//p')"
+  ctrl_r="$(printf '%s\n' "$output" | sed -n 's/^__CTRL_R__//p')"
+  ctrl_t="$(printf '%s\n' "$output" | sed -n 's/^__CTRL_T__//p')"
+
+  assert_eq '"^R" fzf-history-widget' "$ctrl_r" "Ctrl-R uses fzf's supported history widget"
+  assert_eq '"^T" _start-tmux' "$ctrl_t" "Ctrl-T keeps the existing tmux launcher"
+  assert_eq "keep this buffer" "$buffer" "cancelled fzf history search preserves the edit buffer"
+}
+
 test_bash_dotpath_from_symlink() {
   local home output dotpath runtime_dir
   home="$TEST_DIR/bash-home"
@@ -183,5 +228,7 @@ EOF
 test_zsh_noninteractive_startup
 test_zsh_interactive_startup
 test_zsh_preserves_locale_overrides
+test_zsh_plugin_order
+test_fzf_history_cancel_preserves_buffer
 test_bash_dotpath_from_symlink
 test_bash_loads_aliases_without_sheldon

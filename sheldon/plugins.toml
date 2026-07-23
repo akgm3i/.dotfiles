@@ -12,9 +12,6 @@
 
 shell = 'zsh'
 
-[templates]
-defer = "{{ hooks?.pre | nl }}{% for file in files %}zsh-defer source \"{{ file }}\"\n{% endfor %}{{ hooks?.post | nl }}"
-
 [plugins]
 
 # theme
@@ -32,27 +29,20 @@ use = ['async.zsh', 'pure.zsh']
 github = 'zsh-users/zsh-completions'
 
 
-# plugins
-
-# Deferred plugins
-# ----------------
-
-# Deferred loading of plugins in Zsh
-[plugins.zsh-defer]
-github = 'romkatv/zsh-defer'
+# local configuration
+# -------------------
+# Load widgets before autosuggestions and syntax highlighting so they can bind
+# against the final ZLE widget set.
+[plugins.custom]
+local = '~/.config/zsh'
+use = ['[0-9][0-9]_*.zsh']
 
 # Fish-like autosuggestions for Zsh
 [plugins.zsh-autosuggestions]
 github = 'zsh-users/zsh-autosuggestions'
 use = ['{{ name }}.zsh']
-apply = ['defer']
 
 # Fish shell like syntax highlighting for Zsh
 [plugins.zsh-syntax-highlighting]
 github = 'zsh-users/zsh-syntax-highlighting'
-apply = ['defer']
-
-
-[plugins.custom]
-local = '~/.config/zsh'
-use = ['[0-9][0-9]_*.zsh']
+# Keep this last because it wraps existing ZLE widgets.
