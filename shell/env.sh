@@ -90,6 +90,8 @@ _path_prepend /usr/local/bin
 _path_prepend "$DOTPATH/bin"
 _path_prepend "$HOME/.local/bin"
 _path_prepend "$HOME/bin"
+_path_prepend "$GOPATH/bin"
+_path_prepend "$XDG_DATA_HOME/npm/bin"
 export PATH
 
 unset -f _path_prepend

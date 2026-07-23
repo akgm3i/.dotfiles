@@ -1,3 +1,7 @@
+[settings]
+lockfile = true
+lockfile_platforms = ["linux-x64", "macos-arm64"]
+
 [tools]
 # tools
 antigravity-cli = "latest"
@@ -9,11 +13,12 @@ fzf = "latest"
 gh = "latest"
 ghq = "latest"
 jq = "latest"
+neovim = "latest"
 usage = "latest"
 
 # languages
-deno = "2.5"
-go = "1.25"
-node = "22"
-python = "3.13"
-rust = "1.89"
+deno = "2.9"
+go = "1.26"
+node = "24"
+python = "3.14"
+rust = "1.97"
