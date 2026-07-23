@@ -72,7 +72,6 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 
 ## Zsh設定
 ### Plugins
-- [romkatv/zsh-defer](https://github.com/romkatv/zsh-defer): Deferred loading of plugins in Zsh
 - [sindresorhus/pure](https://github.com/sindresorhus/pure): Pretty, minimal and fast ZSH prompt
 - [zsh-users/zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions): Fish-like autosuggestions for Zsh
 - [zsh-users/zsh-completions](https://github.com/zsh-users/zsh-completions): Additional completion definitions for Zsh
@@ -112,7 +111,7 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 
 | Shell | Config | Loaded items |
 | :--- | :--- | :--- |
-| Zsh | `sheldon/plugins.toml` | `pure`, `zsh-completions`, `zsh-defer`, `zsh-autosuggestions`, `zsh-syntax-highlighting`, `~/.config/zsh/[0-9][0-9]_*.zsh` |
+| Zsh | `sheldon/plugins.toml` | `pure`, `zsh-completions`, `~/.config/zsh/[0-9][0-9]_*.zsh`, `zsh-autosuggestions`, `zsh-syntax-highlighting` |
 
 ## Mise設定
 

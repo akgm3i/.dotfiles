@@ -19,19 +19,3 @@ fi
 # initialise completions with ZSH's compinit
 autoload -Uz compinit && compinit -d "${XDG_CACHE_HOME}/zsh/zcompdump-${ZSH_VERSION}"
 zstyle ':completion:*' cache-path $XDG_CACHE_HOME/zsh/zcompcache
-
-function cdrepo {
-  local repodir="$( ghq list -p | fzf -1 +m --query "${*:-}" )"
-  if [ ! -z "$repodir" ] ; then
-    cd "$repodir"
-  fi
-}
-
-function cddot {
-  local target="${DOTPATH:-}"
-  if [ -z "$target" ] || [ ! -d "$target" ]; then
-    printf 'cddot: DOTPATH directory is unavailable\n' >&2
-    return 1
-  fi
-  cd "$target"
-}
