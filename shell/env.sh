@@ -87,6 +87,7 @@ _path_prepend() {
 }
 
 _path_prepend /usr/local/bin
+_path_prepend /opt/homebrew/bin
 _path_prepend "$DOTPATH/bin"
 _path_prepend "$HOME/.local/bin"
 _path_prepend "$HOME/bin"

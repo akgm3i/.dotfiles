@@ -126,7 +126,7 @@ curl -fsSL https://raw.githubusercontent.com/akgm3i/.dotfiles/master/install.sh 
 | `bat` | `latest` | `cat` 代替のファイル表示 |
 | `npm:@openai/codex` | `latest` | OpenAI Codex CLI |
 | `eza` | `latest` | `ls` 代替のファイル一覧 |
-| `fd` | `latest` | ファイル検索 |
+| `fd` | `10.3.0` | ファイル検索 |
 | `fzf` | `latest` | fuzzy finder |
 | `gemini` | `latest` | Gemini CLI |
 | `gh` | `latest` | GitHub CLI |

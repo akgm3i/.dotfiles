@@ -9,9 +9,9 @@ generate_plugins_markdown() {
   # Then, sort the output alphabetically.
   awk '
     {
-      if (/^\s*#\s*.*/) {
+      if (/^[[:space:]]*#[[:space:]]*.*/) {
         comment = $0;
-        sub(/^\s*#\s*/, "", comment);
+        sub(/^[[:space:]]*#[[:space:]]*/, "", comment);
         next;
       }
       if (/github =/) {
@@ -30,7 +30,7 @@ generate_aliases_markdown() {
   local aliases_file="$1"
   awk '
     # Match lines that are headers, e.g., "#- Header" or "##- Sub-header"
-    /^\s*#+-/ {
+    /^[[:space:]]*#+-/ {
       # If the previous category had aliases, print a newline for separation.
       if (header_printed) {
         print ""
@@ -104,11 +104,11 @@ EOF
     local temp_readme
     temp_readme=$(mktemp)
 
-    awk -v content="$full_docs" '
+    ZSH_DOCS_CONTENT="$full_docs" awk '
         BEGIN { in_section = 0 }
         /^## Zsh設定/ {
             print;
-            print content;
+            print ENVIRON["ZSH_DOCS_CONTENT"];
             print "";
             in_section = 1;
             next;

@@ -120,12 +120,14 @@ check_dependencies() {
         fi
     elif [ "$os" = "Darwin" ]; then
         # macOS
+        PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+        export PATH
         if ! has "brew"; then
             NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         fi
         log_info "Updating Homebrew..."
         brew update
-        install_commands "brew" "${required_commands[@]}"
+        install_commands "brew" "${required_commands[@]}" sheldon
     else
         log_info "Unsupported OS: $os. Checking for commands without installation."
         for cmd in "${required_commands[@]}"; do
@@ -168,6 +170,16 @@ create_symlinks() {
         local src="${link%%:*}"
         local dest="${link#*:}"
 
+        if [ ! -e "$src" ]; then
+            log_error "Source file not found: $src"
+            exit 1
+        fi
+
+        if [ -L "$dest" ] && [ "$(readlink "$dest")" = "$src" ]; then
+            log_info "Already linked: $dest"
+            continue
+        fi
+
         if [ -e "$dest" ] || [ -L "$dest" ]; then
             if [ -z "$backup_dir" ]; then
                 backup_dir="$XDG_DATA_HOME/dotfiles/backup_$(date +%Y%m%d%H%M%S)"
@@ -184,10 +196,6 @@ create_symlinks() {
             fi
         fi
 
-        if [ ! -e "$src" ]; then
-            log_error "Source file not found: $src"
-            exit 1
-        fi
         ln -snf "$src" "$dest"
         log_info "Linked $src -> $dest"
     done
